@@ -1,0 +1,12 @@
+diff --git a/node_modules/@popperjs/core/package.json b/node_modules/@popperjs/core/package.json
+index c0c8b52..c5bc713 100644
+--- a/node_modules/@popperjs/core/package.json
++++ b/node_modules/@popperjs/core/package.json
+@@ -1,6 +1,7 @@
+ {
+   "name": "@popperjs/core",
+   "version": "2.11.6",
++  "type": "module",
+   "description": "Tooltip and Popover Positioning Engine",
+   "main": "dist/cjs/popper.js",
+   "main:umd": "dist/umd/popper.js",
