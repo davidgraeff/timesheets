@@ -81,17 +81,28 @@
     <div class="border p-3">
         <h4>Timesheets</h4>
         <FormGroup floating label="ICS Outlook Calendar Link">
-            <Input placeholder="Enter a value"/>
+            <Input placeholder="https://URL" bind:value={$localSettings.ics_url} on:change={() => newerLocalSettings = true}/>
         </FormGroup>
+        <FormGroup floating label="Gitlab URL">
+            <Input placeholder="https://URL" bind:value={$localSettings.gitlab_url} on:change={() => newerLocalSettings = true}/>
+        </FormGroup>
+        <FormGroup floating label="Gitlab API Token">
+            <Input placeholder="https://URL" bind:value={$localSettings.gitlab_access_token} on:change={() => newerLocalSettings = true}/>
+        </FormGroup>
+        <div class="form-group mb-3">
+            <label>ICS Filter</label>
+            <MultiSelect allowUserOptions="append" bind:selected={$localSettings.ics_filter}
+                         bind:options={$localSettings.ics_filter} on:change={() => newerLocalSettings = true}/>
+        </div>
         <div class="form-group mb-3">
             <label>Projects</label>
             <MultiSelect allowUserOptions="append" bind:selected={$localSettings.projects}
-                         bind:options={$localSettings.projects}/>
+                         bind:options={$localSettings.projects} on:change={() => newerLocalSettings = true}/>
         </div>
         <div class="form-group mb-3">
             <label>Tags</label>
             <MultiSelect allowUserOptions="append" bind:selected={$localSettings.tags}
-                         bind:options={$localSettings.tags}/>
+                         bind:options={$localSettings.tags} on:change={() => newerLocalSettings = true}/>
         </div>
     </div>
     <div class="p-3">

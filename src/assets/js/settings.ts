@@ -44,7 +44,9 @@ interface Settings {
     name: string,
     company: string,
     client: string,
-    last_updated?: number
+    last_updated?: number,
+    gitlab_url: string,
+    gitlab_access_token: string
 }
 
 export const localSettings = persistentStore<Settings>("settings", {
@@ -55,6 +57,8 @@ export const localSettings = persistentStore<Settings>("settings", {
     name: "",
     projects: ["Agami", "Falco", "Rowi"],
     tags: ["meeting"],
+    gitlab_url: "",
+    gitlab_access_token: "",
     last_updated: 0
 });
 

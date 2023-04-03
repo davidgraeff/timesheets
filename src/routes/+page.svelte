@@ -1,6 +1,19 @@
 <script lang="ts">
-    import {loadSheet, selectedDate, storeSheet} from "../assets/js/data";
-    import type {OneMonth, OneDay, DayEntry, SelectedDate} from "../assets/js/data";
+    import {
+        fetchGitlabActivity,
+        fetchICS,
+        loadSheet,
+        selectedDate,
+        storeSheet
+    } from "../assets/js/data";
+    import type {
+        OneMonth,
+        OneDay,
+        DayEntry,
+        SelectedDate,
+        GitlabActivityEntry,
+        GitlabActivityEntryPushData
+    } from "../assets/js/data";
 
     import {cloudSettings, localSettings} from "../assets/js/settings";
     import type {Settings} from "../assets/js/settings";
@@ -9,14 +22,18 @@
     import {shortcut} from "../assets/js/shortcut"
     import MultiSelect from 'svelte-multiselect'
     import {get} from "svelte/store";
-    import {FormGroup, Input} from "sveltestrap";
+    import {FormGroup, Input, Progress} from "sveltestrap";
     import {browser} from "$app/environment";
+    import HoursMinutes from "../assets/components/HoursMinutes.svelte";
+    import ConfirmDialog from "../assets/components/ConfirmDialog.svelte";
 
     // New entry
-    let newProject = "";
+    let newProject = [];
     let newTags = [];
-    let newDescription;
-    let newDuration;
+    let newDescription = "";
+    let newDuration = 0;
+
+    let newDurationEl: HoursMinutes | null = null;
 
     let entry: OneMonth = {year: 0, month: 0, days: [], created: 0, change_id: 0};
 
@@ -128,22 +145,31 @@
             applyStyleForDay(dayInMonth, localDate, entry.days[dayInMonth - 1]);
         }
 
-        if (newDuration)
-            newDuration.focus();
+        if (newDurationEl)
+            newDurationEl.focus();
     }
+
+
+    let gitlabActivities: GitlabActivityEntry[] = [];
 
     function changeDay(dayIndex: number) {
         const d = new Date(get(selectedDate).date)
         d.setDate(dayIndex);
+        gitlabActivities = [];
         selectedDate.set({date: d.getTime()});
     }
 
     let focusCounter = 0;
+    let cloudSynced = false;
+    let activityChanges = false;
 
-    async function refreshData(v: SelectedDate) {
+    async function refreshData(v: SelectedDate, forceReload = false) {
+        if (activityChanges) return;
+
         const d = new Date(v.date);
-        if (entry.month != d.getMonth() || entry.year != d.getFullYear()) {
+        if (forceReload || entry.month != d.getMonth() || entry.year != d.getFullYear()) {
             const result = await loadSheet(d.getFullYear(), d.getMonth());
+            cloudSynced = result.cloud;
             // Entry from DB/cloud is same as in-memory one
             if (entry.created != result.month.created) {
                 entry = result.month;
@@ -159,7 +185,7 @@
 
     async function pageGotFocus() {
         ++focusCounter;
-        await refreshData(get(selectedDate));
+        await refreshData(get(selectedDate), true);
     }
 
     onDestroy(() => {
@@ -168,48 +194,102 @@
     })
 
     onMount(async () => {
+        activityChanges = false;
         if (browser)
             document.addEventListener("focus", pageGotFocus);
         return selectedDate.subscribe(refreshData);
     })
 
-    async function saveEntry(e) {
-        e.preventDefault();
-        const descParts = newDescription.value.split('\n');
-        const title = descParts[0];
-        const description = descParts.length > 1 ? descParts.splice(1).join("\n") : "";
+    function dayHasChanged() {
+        activityChanges = true;
+    }
 
-        if (title.length !== 0) {
-            const duration = newDuration.valueAsNumber / 1000;
-            currentDay.entries.push({
-                description,
-                duration,
+    async function saveActivity(e) {
+        if (e)
+            e.preventDefault();
+
+        if (newDescription.length !== 0) {
+            const dayEntry: DayEntry = {
+                description: newDescription,
+                duration: newDuration,
                 import_tags: [],
                 project: newProject,
-                tags: newTags,
-                title
-            });
-            await storeSheet(entry);
+                tags: newTags
+            };
+            currentDay.entries.push(dayEntry);
+            await saveDay();
             currentDay.entries = currentDay.entries;
-            if (newDescription)
-                newDescription.value = "";
+            newDescription = "";
             newTags = [];
-        }
+            newProject = [];
+        } else if (activityChanges)
+            await saveDay();
         setTimeout(() => {
-            if (newDuration)
-                newDuration.focus();
+            if (newDurationEl)
+                newDurationEl.focus();
         }, 100);
     }
 
-    function nextDay() {
+    async function nextDay() {
+        await saveActivity(null);
         const d = new Date(currentDayDate.getTime());
         d.setDate(d.getDate() + 1);
         setDay(d);
     }
 
+    async function removeActivity(activityIndex: number) {
+        currentDay.entries.splice(activityIndex, 1);
+        currentDay.entries = currentDay.entries;
+        await saveDay();
+    }
+
+    async function saveDay() {
+        entry = await storeSheet(entry);
+        activityChanges = false;
+    }
+
+    function computeProgress(cDay: OneDay) {
+        let minutes = 0;
+        for (let activity of cDay.entries)
+            minutes += activity.duration;
+        return minutes * 100 / (cDay.expected_min_hours * 60);
+    }
+
+    let loadingICS = false;
+
+    async function addFromICS() {
+        loadingICS = true;
+        const icsEntries = await fetchICS(currentDayDate.getMonth(), currentDayDate.getDate());
+        console.log("ics entries", icsEntries);
+
+        loadingICS = false;
+    }
+
+    let loadingGitlabActivity = false;
+
+    async function showGitlabActivity() {
+        loadingGitlabActivity = true;
+        gitlabActivities = await fetchGitlabActivity(currentDayDate);
+        console.log("gitlab activity entries", gitlabActivities);
+
+        loadingGitlabActivity = false;
+    }
+
+    async function clearDay() {
+        currentDay.entries = [];
+        await saveDay();
+    }
+
+    let confirmDialog: ConfirmDialog | null = null;
+
+    function shortDate(created_at: string) {
+        const d = new Date(created_at)
+        return `${d.getMonth() + 1}-${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
+    }
+
 </script>
 
-<div>focus {focusCounter}</div>
+<ConfirmDialog desc="Remove all entries of this day?" bind:this={confirmDialog}></ConfirmDialog>
 
 <div class="d-flex justify-content-start overflow-scroll gap-2">
     {#each weeks as week, week_index}
@@ -229,6 +309,7 @@
                             <button type="button"
                                     class="btn btn-sm w-100 border border-2"
                                     id="btn-day-{week_day.mapping}"
+                                    disabled={activityChanges}
                                     on:click={() => changeDay(week_day.mapping)}>{week_day.mapping}</button>
                         {/if}
                     </td>
@@ -240,16 +321,22 @@
 </div>
 
 <div class="my-2 d-flex justify-content-end gap-2">
+    <Progress class="w-100" max="100" value={computeProgress(currentDay)}></Progress>
+    {#if cloudSynced}
+        <div>Cloud sync {entry.change_id}</div>
+    {/if}
     <div>
         <div class="form-check form-switch">
             <input class="form-check-input" type="checkbox" id="switchHoliday" bind:checked={currentDay.holiday}
+                   on:blur={saveDay}
                    use:shortcut={{alt: true, code: 'KeyH'}}>
-            <label class="form-check-label" for="switchHoliday">Holiday (H)</label>
+            <label class="form-check-label text-nowrap" for="switchHoliday">Holiday (H)</label>
         </div>
         <div class="form-check form-switch">
             <input class="form-check-input" type="checkbox" id="switchSick" bind:checked={currentDay.sick}
-                   use:shortcut={{alt: true, code: 'KeyS'}}>
-            <label class="form-check-label" for="switchSick">Sick (S)</label>
+                   on:blur={saveDay}
+                   use:shortcut={{alt: true, code: 'KeyI'}}>
+            <label class="form-check-label text-nowrap" for="switchSick">Ill/Sick (I)</label>
         </div>
     </div>
     <div class="mb-3 form-floating">
@@ -262,6 +349,7 @@
 <table class="table table-borderless">
     <thead>
     <tr class="border-bottom">
+        <td style="width: 10px"></td>
         <td style="width: 100px">Duration</td>
         <td style="width: 120px">Project</td>
         <td>Tags</td>
@@ -269,36 +357,123 @@
     </tr>
     </thead>
     <tbody>
-    {#each currentDay.entries as dayEntry}
-        <div>Entry {dayEntry.duration}  {dayEntry.tags}  {dayEntry.project}  {dayEntry.title}</div>
+    {#each currentDay.entries as dayEntry, activityIndex}
+        <tr>
+            <td>
+                <button type="button" class="btn btn-close"
+                        use:shortcut={{alt: true, code: 'KeyN'}}
+                        on:click={() => removeActivity(activityIndex)}>
+                </button>
+            </td>
+            <td>
+                <HoursMinutes bind:value={dayEntry.duration} on:change={dayHasChanged}></HoursMinutes>
+            </td>
+            <td class="small-dropdown">
+                <MultiSelect bind:selected={dayEntry.project} on:change={dayHasChanged} maxSelect={1} minSelect={1}
+                             options={$localSettings.projects}/>
+            </td>
+            <td class="small-dropdown-lg">
+                <MultiSelect bind:selected={dayEntry.tags} on:change={dayHasChanged} options={$localSettings.tags}/>
+            </td>
+        </tr>
+        <tr class="border-bottom">
+            <td></td>
+            <td colspan="4">
+                  <textarea bind:value={dayEntry.description} on:change={dayHasChanged} rows="3" class="form-control"
+                            placeholder="Descriptive text..."></textarea>
+            </td>
+        </tr>
     {/each}
     <tr>
+        <td colspan="5">
+            <h3>New entry</h3></td>
+    </tr>
+    <tr>
+        <td></td>
         <td>
-            <input bind:this={newDuration} type="time" max="08:00:00" min="00:00:00" value="01:00"
-                   pattern="0[0-8]:[0-9][0-9]" class="form-control"/>
+            <HoursMinutes bind:this={newDurationEl} bind:value={newDuration}></HoursMinutes>
         </td>
         <td class="small-dropdown">
-            <MultiSelect bind:value={newProject} maxSelect={1} minSelect={1} options={$localSettings.projects}/>
+            <MultiSelect bind:selected={newProject} maxSelect={1} minSelect={1} options={$localSettings.projects}/>
         </td>
         <td class="small-dropdown-lg">
-            <MultiSelect bind:value={newTags} options={$localSettings.tags}/>
+            <MultiSelect bind:selected={newTags} options={$localSettings.tags}/>
         </td>
     </tr>
-    <tr class="border-bottom">
+    <tr>
+        <td></td>
         <td colspan="4">
             <div class="d-flex gap-2">
-                <textarea bind:this={newDescription} on:blur={saveEntry} rows="3" class="form-control"
+                <textarea bind:value={newDescription} on:blur={saveActivity} rows="3" class="form-control"
                           placeholder="Descriptive text..."></textarea>
-                <!--                <button type="button" class="btn btn-danger" tabindex="-1"-->
-                <!--                        on:click={() => removeEntry(dayEntryIndex)}>X-->
-                <!--                </button>-->
             </div>
         </td>
     </tr>
     </tbody>
 </table>
 
-<button type="button" class="btn btn-primary"
-        use:shortcut={{alt: true, code: 'KeyN'}}
-        on:click={nextDay}>Next day (N)
-</button>
+<div class="d-flex justify-content-end">
+    <div class="btn-group">
+
+        <button type="button" class="btn btn-primary"
+                use:shortcut={{alt: true, code: 'KeyN'}}
+                on:click={nextDay}>Next day (N)
+        </button>
+
+        {#if activityChanges}
+            <button type="button" class="btn btn-primary"
+                    use:shortcut={{alt: true, code: 'KeyS'}}
+                    on:click={saveDay}>Save day (S)
+            </button>
+        {/if}
+
+        <button type="button" class="btn btn-danger" on:click={() => confirmDialog.open(clearDay)}>Clear day</button>
+        <button type="button" class="btn btn-secondary" on:click={addFromICS} disabled={loadingICS}>Add entries from
+            ICS
+        </button>
+        <button type="button" class="btn btn-secondary" on:click={showGitlabActivity} disabled={loadingGitlabActivity}>
+            Show Gitlab Activity
+        </button>
+
+    </div>
+</div>
+
+{#if gitlabActivities.length > 0}
+    <table class="table mt-3">
+        <thead>
+        <tr class="border-bottom">
+            <td style="width: 100px">Date</td>
+            <td style="width: 200px">Action</td>
+            <td>Title</td>
+        </tr>
+        </thead>
+        <tbody>
+        {#each gitlabActivities as activity, activityIndex}
+            <tr>
+                <td>{shortDate(activity.created_at)}</td>
+                <td>
+                    {#if activity.push_data}
+                        {activity.push_data.action}
+                    {:else }
+                        {activity.action_name}
+                    {/if}
+                    {#if activity.target_type}
+                        {activity.target_type}
+                    {/if}
+                </td>
+                <td>
+                    {#if activity.target_title}
+                        {activity.target_title}
+                    {/if}
+                    {#if activity.push_data && activity.push_data.commit_title}
+                        {activity.push_data.commit_title}
+                    {/if}
+                    {#if activity.push_data && activity.push_data.ref}
+                        {activity.push_data.ref_type} {activity.push_data.ref}
+                    {/if}
+                </td>
+            </tr>
+        {/each}
+        </tbody>
+    </table>
+{/if}

@@ -6,7 +6,6 @@ use axum::{
 };
 use std::{sync::Arc};
 use axum::handler::HandlerWithoutStateExt;
-use axum::http::Method;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 use tower_http::cors::{Any, CorsLayer};
 
@@ -37,7 +36,9 @@ pub fn backend(
         .route("/api", get(api::handler))
         .route("/api/settings", get(api::get_settings))
         .route("/api/settings", post(api::set_settings))
-        .route("/api/fetch_ics", post(api::fetch_ics))
+        .route("/api/fetch_ics", get(api::fetch_ics_full))
+        .route("/api/fetch_ics/:month", get(api::fetch_ics_month))
+        .route("/api/fetch_ics/:month/:day", get(api::fetch_ics_month_day))
         .route("/api/timesheets", get(api::list_timesheets))
         .route("/api/timesheets/:date", get(api::get_timesheet))
         .route("/api/timesheets/:date", post(api::set_timesheet))

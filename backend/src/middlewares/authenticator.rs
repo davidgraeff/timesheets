@@ -34,8 +34,6 @@ pub async fn auth<B: Send + Sync>(
         return Err((StatusCode::UNAUTHORIZED, Json(JsonError::unauthorized())));
     };
 
-    tracing::debug!("Received Authorization Header: {}", auth_header);
-
     // check bearer authorization to see if it matches
     if store.api_token_check(auth_header) {
         Ok(next.run(req).await)

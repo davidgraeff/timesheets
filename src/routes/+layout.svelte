@@ -34,7 +34,7 @@
 
 </script>
 
-<header>
+<header class="d-print-none">
     <nav class="navbar navbar-expand-md">
         <ul class="nav nav-tabs me-auto">
             <li class="nav-item">
@@ -54,34 +54,27 @@
         <NavbarToggler on:click={() => (isOpen = !isOpen)}/>
         <Collapse {isOpen} navbar expand="md" on:update={handleUpdate}>
             <Nav navbar>
-                <input type="date" class="form-control" value={new Date($selectedDate.date).toISOString().split('T')[0]}
+                <input type="date" class="form-control"
+                       value={new Date($selectedDate.date).toISOString().split('T')[0]}
                        on:input={e => setCurrentDate(e.target.valueAsNumber) }/>
-                <Dropdown nav inNavbar>
-                    <DropdownToggle nav caret>This day</DropdownToggle>
-                    <DropdownMenu right>
-                        <DropdownItem>Clear</DropdownItem>
-                    </DropdownMenu>
-                </Dropdown>
-                <Dropdown nav inNavbar>
-                    <DropdownToggle nav caret>Export</DropdownToggle>
-                    <DropdownMenu right>
-                        <DropdownItem>Export .sheet</DropdownItem>
-                        <DropdownItem divider/>
-                        <DropdownItem>Cloud Sync</DropdownItem>
-                    </DropdownMenu>
-                </Dropdown>
-                <Dropdown nav inNavbar>
-                    <DropdownToggle nav caret>Import</DropdownToggle>
-                    <DropdownMenu right>
-                        <DropdownItem>Import .sheet</DropdownItem>
-                        <DropdownItem divider/>
-                        <DropdownItem header>This day</DropdownItem>
-                        <DropdownItem>Add entries from ICS</DropdownItem>
-                        <DropdownItem header>This month</DropdownItem>
-                        <DropdownItem>Add entries from ICS</DropdownItem>
-                        <DropdownItem>Clear by filter</DropdownItem>
-                    </DropdownMenu>
-                </Dropdown>
+                {#if $page.url.pathname === "/"}
+                    <Dropdown nav inNavbar>
+                        <DropdownToggle nav caret>Export</DropdownToggle>
+                        <DropdownMenu right>
+                            <DropdownItem>Export .sheet</DropdownItem>
+                        </DropdownMenu>
+                    </Dropdown>
+                    <Dropdown nav inNavbar>
+                        <DropdownToggle nav caret>Import</DropdownToggle>
+                        <DropdownMenu right>
+                            <DropdownItem>Import .sheet</DropdownItem>
+                            <DropdownItem divider/>
+                            <DropdownItem header>This month</DropdownItem>
+                            <DropdownItem>Add entries from ICS</DropdownItem>
+                            <DropdownItem>Clear by filter</DropdownItem>
+                        </DropdownMenu>
+                    </Dropdown>
+                {/if}
             </Nav>
         </Collapse>
     </nav>
