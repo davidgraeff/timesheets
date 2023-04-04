@@ -34,7 +34,7 @@
 
 </script>
 
-<header class="d-print-none">
+<header class="d-print-none container container-lg pt-3">
     <nav class="navbar navbar-expand-md">
         <ul class="nav nav-tabs me-auto">
             <li class="nav-item">

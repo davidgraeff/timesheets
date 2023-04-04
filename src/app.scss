@@ -89,3 +89,19 @@ table.table-weeks {
   --sms-padding: 0.375rem 0.75rem;
   --sms-border-radius: 0.375rem;
 }
+
+@page main {
+  size: a4 portrait;   /* auto is the initial value */
+  /* this affects the margin in the printer settings */
+  margin: 25mm 25mm 25mm 25mm;
+}
+
+@media print {
+  body {
+    page: main;
+    margin: 0;
+  }
+  .container {
+    max-width: initial;
+  }
+}

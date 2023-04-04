@@ -291,189 +291,193 @@
 
 <ConfirmDialog desc="Remove all entries of this day?" bind:this={confirmDialog}></ConfirmDialog>
 
-<div class="d-flex justify-content-start overflow-scroll gap-2">
-    {#each weeks as week, week_index}
-        <table class="table-responsive table-bordered table-weeks mb-2">
-            <thead>
-            <tr>
-                {#each week as week_day, day_index}
-                    <td class:text-muted={week_day.mapping===0 || day_index>4}>{WEEK_DAY_NAMES[day_index]}</td>
-                {/each}
-            </tr>
-            </thead>
-            <tbody>
-            <tr>
-                {#each week as week_day}
-                    <td>
-                        {#if week_day.mapping !== 0}
-                            <button type="button"
-                                    class="btn btn-sm w-100 border border-2"
-                                    id="btn-day-{week_day.mapping}"
-                                    disabled={activityChanges}
-                                    on:click={() => changeDay(week_day.mapping)}>{week_day.mapping}</button>
-                        {/if}
-                    </td>
-                {/each}
-            </tr>
-            </tbody>
-        </table>
-    {/each}
-</div>
-
-<div class="my-2 d-flex justify-content-end gap-2">
-    <Progress class="w-100" max="100" value={computeProgress(currentDay)}></Progress>
-    {#if cloudSynced}
-        <div>Cloud sync {entry.change_id}</div>
-    {/if}
-    <div>
-        <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" id="switchHoliday" bind:checked={currentDay.holiday}
-                   on:blur={saveDay}
-                   use:shortcut={{alt: true, code: 'KeyH'}}>
-            <label class="form-check-label text-nowrap" for="switchHoliday">Holiday (H)</label>
-        </div>
-        <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" id="switchSick" bind:checked={currentDay.sick}
-                   on:blur={saveDay}
-                   use:shortcut={{alt: true, code: 'KeyI'}}>
-            <label class="form-check-label text-nowrap" for="switchSick">Ill/Sick (I)</label>
-        </div>
+<div class="container container-lg">
+    <div class="d-flex justify-content-start overflow-scroll gap-2">
+        {#each weeks as week, week_index}
+            <table class="table-responsive table-bordered table-weeks mb-2">
+                <thead>
+                <tr>
+                    {#each week as week_day, day_index}
+                        <td class:text-muted={week_day.mapping===0 || day_index>4}>{WEEK_DAY_NAMES[day_index]}</td>
+                    {/each}
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    {#each week as week_day}
+                        <td>
+                            {#if week_day.mapping !== 0}
+                                <button type="button"
+                                        class="btn btn-sm w-100 border border-2"
+                                        id="btn-day-{week_day.mapping}"
+                                        disabled={activityChanges}
+                                        on:click={() => changeDay(week_day.mapping)}>{week_day.mapping}</button>
+                            {/if}
+                        </td>
+                    {/each}
+                </tr>
+                </tbody>
+            </table>
+        {/each}
     </div>
-    <div class="mb-3 form-floating">
-        <input class="form-control" style="min-width: 130px" placeholder="Enter a value" type="time"
-               on:change={setExpectedMinHours} bind:value={expected_min_hours} id="input_min_hours"/>
-        <label use:shortcut={{alt: true, code: 'KeyM'}} for="input_min_hours">Min hours (M) </label>
-    </div>
-</div>
 
-<table class="table table-borderless">
-    <thead>
-    <tr class="border-bottom">
-        <td style="width: 10px"></td>
-        <td style="width: 100px">Duration</td>
-        <td style="width: 120px">Project</td>
-        <td>Tags</td>
-        <td></td>
-    </tr>
-    </thead>
-    <tbody>
-    {#each currentDay.entries as dayEntry, activityIndex}
-        <tr>
-            <td>
-                <button type="button" class="btn btn-close"
-                        use:shortcut={{alt: true, code: 'KeyN'}}
-                        on:click={() => removeActivity(activityIndex)}>
-                </button>
-            </td>
-            <td>
-                <HoursMinutes bind:value={dayEntry.duration} on:change={dayHasChanged}></HoursMinutes>
-            </td>
-            <td class="small-dropdown">
-                <MultiSelect bind:selected={dayEntry.project} on:change={dayHasChanged} maxSelect={1} minSelect={1}
-                             options={$localSettings.projects}/>
-            </td>
-            <td class="small-dropdown-lg">
-                <MultiSelect bind:selected={dayEntry.tags} on:change={dayHasChanged} options={$localSettings.tags}/>
-            </td>
-        </tr>
-        <tr class="border-bottom">
-            <td></td>
-            <td colspan="4">
-                  <textarea bind:value={dayEntry.description} on:change={dayHasChanged} rows="3" class="form-control"
-                            placeholder="Descriptive text..."></textarea>
-            </td>
-        </tr>
-    {/each}
-    <tr>
-        <td colspan="5">
-            <h3>New entry</h3></td>
-    </tr>
-    <tr>
-        <td></td>
-        <td>
-            <HoursMinutes bind:this={newDurationEl} bind:value={newDuration}></HoursMinutes>
-        </td>
-        <td class="small-dropdown">
-            <MultiSelect bind:selected={newProject} maxSelect={1} minSelect={1} options={$localSettings.projects}/>
-        </td>
-        <td class="small-dropdown-lg">
-            <MultiSelect bind:selected={newTags} options={$localSettings.tags}/>
-        </td>
-    </tr>
-    <tr>
-        <td></td>
-        <td colspan="4">
-            <div class="d-flex gap-2">
-                <textarea bind:value={newDescription} on:blur={saveActivity} rows="3" class="form-control"
-                          placeholder="Descriptive text..."></textarea>
-            </div>
-        </td>
-    </tr>
-    </tbody>
-</table>
-
-<div class="d-flex justify-content-end">
-    <div class="btn-group">
-
-        <button type="button" class="btn btn-primary"
-                use:shortcut={{alt: true, code: 'KeyN'}}
-                on:click={nextDay}>Next day (N)
-        </button>
-
-        {#if activityChanges}
-            <button type="button" class="btn btn-primary"
-                    use:shortcut={{alt: true, code: 'KeyS'}}
-                    on:click={saveDay}>Save day (S)
-            </button>
+    <div class="my-2 d-flex justify-content-end gap-2">
+        <Progress class="w-100" max="100" value={computeProgress(currentDay)}></Progress>
+        {#if cloudSynced}
+            <div>Cloud sync {entry.change_id}</div>
         {/if}
-
-        <button type="button" class="btn btn-danger" on:click={() => confirmDialog.open(clearDay)}>Clear day</button>
-        <button type="button" class="btn btn-secondary" on:click={addFromICS} disabled={loadingICS}>Add entries from
-            ICS
-        </button>
-        <button type="button" class="btn btn-secondary" on:click={showGitlabActivity} disabled={loadingGitlabActivity}>
-            Show Gitlab Activity
-        </button>
-
+        <div>
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="switchHoliday" bind:checked={currentDay.holiday}
+                       on:blur={saveDay}
+                       use:shortcut={{alt: true, code: 'KeyH'}}>
+                <label class="form-check-label text-nowrap" for="switchHoliday">Holiday (H)</label>
+            </div>
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="switchSick" bind:checked={currentDay.sick}
+                       on:blur={saveDay}
+                       use:shortcut={{alt: true, code: 'KeyI'}}>
+                <label class="form-check-label text-nowrap" for="switchSick">Ill/Sick (I)</label>
+            </div>
+        </div>
+        <div class="mb-3 form-floating">
+            <input class="form-control" style="min-width: 130px" placeholder="Enter a value" type="time"
+                   on:change={setExpectedMinHours} bind:value={expected_min_hours} id="input_min_hours"/>
+            <label use:shortcut={{alt: true, code: 'KeyM'}} for="input_min_hours">Min hours (M) </label>
+        </div>
     </div>
-</div>
 
-{#if gitlabActivities.length > 0}
-    <table class="table mt-3">
+    <table class="table table-borderless">
         <thead>
         <tr class="border-bottom">
-            <td style="width: 100px">Date</td>
-            <td style="width: 200px">Action</td>
-            <td>Title</td>
+            <td style="width: 10px"></td>
+            <td style="width: 100px">Duration</td>
+            <td style="width: 120px">Project</td>
+            <td>Tags</td>
+            <td></td>
         </tr>
         </thead>
         <tbody>
-        {#each gitlabActivities as activity, activityIndex}
+        {#each currentDay.entries as dayEntry, activityIndex}
             <tr>
-                <td>{shortDate(activity.created_at)}</td>
                 <td>
-                    {#if activity.push_data}
-                        {activity.push_data.action}
-                    {:else }
-                        {activity.action_name}
-                    {/if}
-                    {#if activity.target_type}
-                        {activity.target_type}
-                    {/if}
+                    <button type="button" class="btn btn-close"
+                            use:shortcut={{alt: true, code: 'KeyN'}}
+                            on:click={() => removeActivity(activityIndex)}>
+                    </button>
                 </td>
                 <td>
-                    {#if activity.target_title}
-                        {activity.target_title}
-                    {/if}
-                    {#if activity.push_data && activity.push_data.commit_title}
-                        {activity.push_data.commit_title}
-                    {/if}
-                    {#if activity.push_data && activity.push_data.ref}
-                        {activity.push_data.ref_type} {activity.push_data.ref}
-                    {/if}
+                    <HoursMinutes bind:value={dayEntry.duration} on:change={dayHasChanged}></HoursMinutes>
+                </td>
+                <td class="small-dropdown">
+                    <MultiSelect bind:selected={dayEntry.project} on:change={dayHasChanged} maxSelect={1} minSelect={1}
+                                 options={$localSettings.projects}/>
+                </td>
+                <td class="small-dropdown-lg">
+                    <MultiSelect bind:selected={dayEntry.tags} on:change={dayHasChanged} options={$localSettings.tags}/>
+                </td>
+            </tr>
+            <tr class="border-bottom">
+                <td></td>
+                <td colspan="4">
+                  <textarea bind:value={dayEntry.description} on:change={dayHasChanged} rows="3" class="form-control"
+                            placeholder="Descriptive text..."></textarea>
                 </td>
             </tr>
         {/each}
+        <tr>
+            <td colspan="5">
+                <h3>New entry</h3></td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>
+                <HoursMinutes bind:this={newDurationEl} bind:value={newDuration}></HoursMinutes>
+            </td>
+            <td class="small-dropdown">
+                <MultiSelect bind:selected={newProject} maxSelect={1} minSelect={1} options={$localSettings.projects}/>
+            </td>
+            <td class="small-dropdown-lg">
+                <MultiSelect bind:selected={newTags} options={$localSettings.tags}/>
+            </td>
+        </tr>
+        <tr>
+            <td></td>
+            <td colspan="4">
+                <div class="d-flex gap-2">
+                <textarea bind:value={newDescription} on:blur={saveActivity} rows="3" class="form-control"
+                          placeholder="Descriptive text..."></textarea>
+                </div>
+            </td>
+        </tr>
         </tbody>
     </table>
-{/if}
+
+    <div class="d-flex justify-content-end">
+        <div class="btn-group">
+
+            <button type="button" class="btn btn-primary"
+                    use:shortcut={{alt: true, code: 'KeyN'}}
+                    on:click={nextDay}>Next day (N)
+            </button>
+
+            {#if activityChanges}
+                <button type="button" class="btn btn-primary"
+                        use:shortcut={{alt: true, code: 'KeyS'}}
+                        on:click={saveDay}>Save day (S)
+                </button>
+            {/if}
+
+            <button type="button" class="btn btn-danger" on:click={() => confirmDialog.open(clearDay)}>Clear day
+            </button>
+            <button type="button" class="btn btn-secondary" on:click={addFromICS} disabled={loadingICS}>Add entries from
+                ICS
+            </button>
+            <button type="button" class="btn btn-secondary" on:click={showGitlabActivity}
+                    disabled={loadingGitlabActivity}>
+                Show Gitlab Activity
+            </button>
+
+        </div>
+    </div>
+
+    {#if gitlabActivities.length > 0}
+        <table class="table mt-3">
+            <thead>
+            <tr class="border-bottom">
+                <td style="width: 100px">Date</td>
+                <td style="width: 200px">Action</td>
+                <td>Title</td>
+            </tr>
+            </thead>
+            <tbody>
+            {#each gitlabActivities as activity, activityIndex}
+                <tr>
+                    <td>{shortDate(activity.created_at)}</td>
+                    <td>
+                        {#if activity.push_data}
+                            {activity.push_data.action}
+                        {:else }
+                            {activity.action_name}
+                        {/if}
+                        {#if activity.target_type}
+                            {activity.target_type}
+                        {/if}
+                    </td>
+                    <td>
+                        {#if activity.target_title}
+                            {activity.target_title}
+                        {/if}
+                        {#if activity.push_data && activity.push_data.commit_title}
+                            {activity.push_data.commit_title}
+                        {/if}
+                        {#if activity.push_data && activity.push_data.ref}
+                            {activity.push_data.ref_type} {activity.push_data.ref}
+                        {/if}
+                    </td>
+                </tr>
+            {/each}
+            </tbody>
+        </table>
+    {/if}
+</div>

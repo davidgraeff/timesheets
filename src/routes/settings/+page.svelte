@@ -47,9 +47,7 @@
     });
 
 </script>
-<h1>Settings</h1>
-
-<Form>
+<Form class="container container-lg">
     <div class="border p-3 mb-3">
         <h4>Cloud</h4>
         <FormGroup floating label="Cloud URL">
