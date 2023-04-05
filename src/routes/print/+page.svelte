@@ -3,7 +3,10 @@
     import '@carbon/charts/styles.css';
     import {BarChartSimple, PieChart} from "@carbon/charts-svelte";
 
-    import {selectedDate} from "../../assets/js/data.js";
+    import type {SelectedDate, OneMonth} from "../../assets/js/data.js";
+
+    import {onMount} from 'svelte';
+    import {selectedDate, loadSheet} from "../../assets/js/data.js";
     import {localSettings} from "../../assets/js/settings.js";
 
     const zeroPad = (num, places = 2) => String(num).padStart(places, '0')
@@ -43,92 +46,14 @@
         tag_sums: ProjectHours[],
     }
 
-    const exampleData: TimesheetPrintData = {
-        header_date: "2022-12",
-        period: "2022-12-01 to 2022-12-31",
-        projects: [
-            {
-                name: "Agami",
-                minutes: 124
-            },
-            {
-                name: "Falco",
-                minutes: 360
-            }],
-        total_minutes: 7380,
-        tag_sums: [{name: "Meeting", minutes: 90}, {name: "Feature", minutes: 172}, {name: "Fix", minutes: 20}],
-        weeks: [{
-            period: "2022-03-01 to 2022-03-07",
-            days: [
-                {
-                    date: new Date(2023, 3, 1), activities: [
-                        {
-                            project: "Agami",
-                            minutes: 90,
-                            tags: ["Meeting"],
-                            description: "hisdf sidufbibas dazihu bdfai fbds\nfhsbdf ihsbdafuzwse sdf hb",
-                        },
-                        {
-                            project: "Agami",
-                            minutes: 80,
-                            tags: ["Feature"],
-                            description: "hisdf sidufbibas dazihu bdfai fbds",
-                        },
-                        {
-                            project: "Agami",
-                            minutes: 120,
-                            tags: ["Fix"],
-                            description: "hisdf sidufbibas dazihu bdfai fbds",
-                        }
-                    ]
-                },
-                {
-                    date: new Date(2023, 3, 2), activities: [
-                        {
-                            project: "Agami",
-                            minutes: 90,
-                            tags: ["Meeting"],
-                            description: "hisdf sidufbibas dazihu bdfai fbds\nfhsbdf ihsbdafuzwse sdf hb",
-                        },
-                        {
-                            project: "Agami",
-                            minutes: 80,
-                            tags: ["Feature"],
-                            description: "hisdf sidufbibas dazihu bdfai fbds",
-                        },
-                        {
-                            project: "Agami",
-                            minutes: 120,
-                            tags: ["Fix"],
-                            description: "hisdf sidufbibas dazihu bdfai fbds",
-                        }
-                    ]
-                },
-                {
-                    date: new Date(2023, 3, 3), activities: [
-                        {
-                            project: "Agami",
-                            minutes: 90,
-                            tags: ["Meeting"],
-                            description: "hisdf sidufbibas dazihu bdfai fbds\nfhsbdf ihsbdafuzwse sdf hb",
-                        },
-                        {
-                            project: "Agami",
-                            minutes: 80,
-                            tags: ["Feature"],
-                            description: "hisdf sidufbibas dazihu bdfai fbds",
-                        },
-                        {
-                            project: "Agami",
-                            minutes: 120,
-                            tags: ["Fix"],
-                            description: "hisdf sidufbibas dazihu bdfai fbds",
-                        }
-                    ]
-                }
-            ]
-        }]
-    }
+    let exampleData: TimesheetPrintData = {
+        header_date: "",
+        period: "",
+        projects: [],
+        tag_sums: [],
+        total_minutes: 0,
+        weeks: []
+    };
 
     const project_chart_options = {
         height: "170px",
@@ -140,8 +65,7 @@
             labels: {
                 enabled: true,
                 formatter: v => {
-                    const d = new Date(v.data.value * 1000);
-                    return `${v.data.group} (${zeroPad(d.getHours().toString())}:${zeroPad(d.getMinutes().toString())}h)`;
+                    return `${v.data.group} (${hh_mm(v.data.value)}h)`;
                 }
             }
         },
@@ -166,6 +90,146 @@
 
     function weekday(date: Date) {
         return date.toLocaleDateString('en-US', {weekday: 'short'});
+    }
+
+    function computeWeeks(date: Date) {
+        const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+        const translateToMondayFirstDay = [6, 0, 1, 2, 3, 4, 5];
+
+        let localWeeks: Week[] = [];
+        let currentWeek: Week = structuredClone(EMPTY_WEEK);
+
+        let weekHasEntries = false;
+        for (let i = 1; i <= daysInMonth; ++i) {
+            const dayDate = new Date(date.getFullYear(), date.getMonth(), i);
+            const dayOfWeek = translateToMondayFirstDay[dayDate.getDay()];
+            currentWeek[dayOfWeek].mapping = i;
+            currentWeek[dayOfWeek].btnClasses = "";
+            weekHasEntries = true;
+            if (dayOfWeek == 6) {
+                localWeeks.push(currentWeek);
+                currentWeek = structuredClone(EMPTY_WEEK);
+                weekHasEntries = false;
+            }
+        }
+
+        if (weekHasEntries)
+            localWeeks.push(currentWeek);
+
+        weeks = localWeeks;
+    }
+
+    async function refreshData(v: SelectedDate) {
+        const d = new Date(v.date);
+        const dCopy = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+        const result = await loadSheet(d.getFullYear(), d.getMonth());
+        const entry: OneMonth = result.month;
+        let newPageData: TimesheetPrintData = {
+            header_date: `${entry.year}-${zeroPad(entry.month)}`,
+            period: `${entry.year}-${zeroPad(entry.month)}-01 to ${entry.year}-${zeroPad(entry.month)}-${zeroPad(dCopy.getDate())}`,
+            projects: [],
+            tag_sums: [],
+            total_minutes: 0,
+            weeks: []
+        };
+
+        let tags = new Map<string, number>();
+        let projects = new Map<string, number>();
+        const translateToMondayFirstDay = [6, 0, 1, 2, 3, 4, 5];
+
+        let currentWeek: ProjectWeek = {days: [], period: ""};
+        let weekHasEntries = false;
+
+        let dayOfMonth = 1;
+        for (let day of entry.days) {
+            const dayDate = new Date(entry.year, entry.month - 1, dayOfMonth);
+            const dayOfWeek = translateToMondayFirstDay[dayDate.getDay()];
+
+            let projectDay: ProjectDays = {activities: [], date: dayDate};
+            for (let entry of day.entries) {
+                let activity: ProjectActivity = {
+                    description: entry.description,
+                    minutes: entry.duration,
+                    project: "",
+                    tags: entry.tags
+                };
+                newPageData.total_minutes += entry.duration;
+                for (let tagName of entry.tags) {
+                    let existingEntry = tags.get(tagName);
+                    if (existingEntry)
+                        tags.set(tagName, entry.duration + existingEntry);
+                    else
+                        tags.set(tagName, entry.duration);
+                }
+                for (let projectName of entry.project) {
+                    activity.project = projectName;
+                    let existingEntry = projects.get(projectName);
+                    if (existingEntry)
+                        projects.set(projectName, entry.duration + existingEntry);
+                    else
+                        projects.set(projectName, entry.duration);
+                }
+                projectDay.activities.push(activity);
+            }
+
+            if (projectDay.activities.length === 0) {
+                if (dayOfWeek < 5) {
+                    let activity: ProjectActivity = {
+                        description: "-",
+                        minutes: 0,
+                        project: "",
+                        tags: [""]
+                    };
+                    if (day.holiday) activity.description = "-Holiday-";
+                    if (day.sick) activity.description = "-Sick-";
+                    projectDay.activities.push(activity);
+                }
+            }
+
+            if (projectDay.activities.length > 0)
+                currentWeek.days.push(projectDay);
+            weekHasEntries = true;
+
+            if (dayOfWeek == 6) {
+                currentWeek.period = weekPeriodString(entry, dayOfMonth);
+                newPageData.weeks.push(currentWeek);
+                currentWeek = {days: [], period: ""};
+                weekHasEntries = false;
+            }
+
+            ++dayOfMonth;
+        }
+
+        if (weekHasEntries) {
+            currentWeek.period = weekPeriodString(entry, dayOfMonth - 1);
+            newPageData.weeks.push(currentWeek);
+        }
+
+        for (let [tag, duration] of tags) {
+            newPageData.tag_sums.push({name: tag, minutes: duration});
+        }
+        for (let [tag, duration] of projects) {
+            newPageData.projects.push({name: tag, minutes: duration});
+        }
+
+        exampleData = newPageData;
+    }
+
+    function weekPeriodString(entry: OneMonth, lastDay: number) {
+        const firstDay = Math.max(1, lastDay - 6);
+        lastDay = Math.min(lastDay, entry.days.length + 1);
+        return `${entry.year}-${zeroPad(entry.month)}-${zeroPad(firstDay)} to ${entry.year}-${zeroPad(entry.month)}-${zeroPad(lastDay)}`;
+    }
+
+    onMount(() => {
+        return selectedDate.subscribe(refreshData);
+    })
+
+    function withComma(tag, index: number, length: number) {
+        if (index + 1 < length)
+            return tag + ",";
+        else
+            return tag;
     }
 
 </script>
@@ -238,18 +302,18 @@
                     <td>
                         <table class="table table-striped print-day-table">
                             <tbody>
-                                {#each day.activities as activity}
-                                    <tr>
-                                        <td>{activity.project}</td>
-                                        <td>{hh_mm(activity.minutes)} h</td>
-                                        <td>
-                                            {#each activity.tags as tag}
-                                                {tag}
-                                            {/each}
-                                        </td>
-                                        <td>{@html activity.description.replace('\n', '<br>')}</td>
-                                    </tr>
-                                {/each}
+                            {#each day.activities as activity}
+                                <tr>
+                                    <td>{activity.project}</td>
+                                    <td>{hh_mm(activity.minutes)} h</td>
+                                    <td class="ptag">
+                                        {#each activity.tags as tag, index}
+                                            <span>{withComma(tag, index, activity.tags.length)}</span>&nbsp;
+                                        {/each}
+                                    </td>
+                                    <td>{@html activity.description.replace('\n', '<br>')}</td>
+                                </tr>
+                            {/each}
                             </tbody>
                         </table>
                     </td>
@@ -293,7 +357,19 @@
       white-space: nowrap;
     }
 
+    td:first-child {
+      min-width: 70px;
+    }
+
     margin-bottom: 0;
+  }
+
+  td.ptag {
+    white-space: normal;
+
+    span {
+      white-space: nowrap;
+    }
   }
 
   .print-week-table {
