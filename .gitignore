@@ -11,3 +11,4 @@ vite.config.ts.timestamp-*
 /.idea/
 /target/
 time-sheets/
+time-sheets/settings.json
