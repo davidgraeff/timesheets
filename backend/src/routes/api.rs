@@ -1,4 +1,6 @@
 use std::{fs, io};
+use std::collections::HashSet;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{Duration, UNIX_EPOCH};
 use axum::{response::IntoResponse, Json};
@@ -6,6 +8,7 @@ use axum::body::StreamBody;
 use axum::extract::{BodyStream, Path, State};
 use axum::headers::HeaderMap;
 use axum::http::{header, StatusCode};
+use chrono::TimeZone;
 use serde_json::{json};
 use serde::{Deserialize, Serialize};
 use futures::stream::{TryStreamExt};
@@ -101,15 +104,16 @@ async fn fetch_ics(month: Option<u64>, day: Option<u64>, store: Arc<Store>) -> R
     }
 
     let path = store.upload_dir.join("ics.json");
+    let path_raw = store.upload_dir.join("ics_raw.json");
     let date_path = store.upload_dir.join("ics_ts.json");
     let mut ics_meta: IcsMeta = read_file(&date_path).await.unwrap_or_default().0;
     let now = get_now();
     if ics_meta.timestamp + 24 * 60 * 60 >= now {
-        tracing::info!("Fetch ICS: Cached value");
         // Return cached value
         let output = read_file::<Vec<ICSEntry>>(&path).await.map_err(|err| (StatusCode::NOT_FOUND, err.to_string()))?.0;
-
+        let unfiltered_entries = output.len();
         let output = filter_ics_entries(output, month, day, &settings.ics_filter);
+        tracing::info!("Fetch ICS: Cached value: {}-{}. Entries: {} ({})", month.unwrap_or(100), day.unwrap_or(100), output.len(), unfiltered_entries);
         return Ok(Json(output));
     }
 
@@ -142,6 +146,12 @@ async fn fetch_ics(month: Option<u64>, day: Option<u64>, store: Arc<Store>) -> R
                 v.append(&mut entry.events);
             }
         }
+
+
+        let events = serde_json::to_string(&v)?;
+        let mut file = File::create(path_raw).await?;
+        file.write_all(events.as_ref()).await?;
+        file.flush().await?;
 
         let output = convert(v)?;
 
@@ -190,12 +200,14 @@ fn filter_ics_entries(entries: Vec<ICSEntry>, month: Option<u64>, day: Option<u6
     }).collect()
 }
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Clone)]
 pub struct ICSEntry {
     desc: String,
     uid: String,
     title: String,
+    /// Unix timestamp in seconds
     start: i64,
+    /// Duration in seconds
     duration: i64,
     confirmed: bool,
     /// Out of office
@@ -217,14 +229,23 @@ fn convert_ics_date_unix(mut input: String) -> i64 {
 }
 
 fn convert(input: Vec<IcalEvent>) -> Result<Vec<ICSEntry>, Box<dyn std::error::Error>> {
+    use rrule::{RRule, Tz, RRuleSet};
+    use chrono::{NaiveDateTime, DateTime, Utc};
+
     let mut output = Vec::<ICSEntry>::new();
+    let mut entries_map = HashSet::<i64>::new();
 
     let mut end = 0;
 
-    let min_start = std::time::SystemTime::now().duration_since(UNIX_EPOCH)? - Duration::from_secs(60 * 60 * 24 * 65);
+    let min_start = std::time::SystemTime::now().duration_since(UNIX_EPOCH)? - Duration::from_secs(60 * 60 * 24 * 70);
     let min_start = min_start.as_secs();
 
+    let chrono_now = Utc::now();
+    let offset = Tz::UTC.offset_from_utc_date(&chrono_now.date_naive());
+    let min_chrono_date = DateTime::<Tz>::from_utc(chrono_now.naive_utc() - chrono::Duration::seconds(60 * 60 * 24 * 70), offset);
+
     for entry in input {
+        let mut recurring: Option<String> = None;
         let mut new_entry = ICSEntry::default();
         for prop in entry.properties {
             match &prop.name[..] {
@@ -238,19 +259,48 @@ fn convert(input: Vec<IcalEvent>) -> Result<Vec<ICSEntry>, Box<dyn std::error::E
                     new_entry.confirmed = v == "BUSY";
                     new_entry.oof = v == "OOF";
                 }
+                "RRULE" => { recurring = prop.value; }
                 _ => {}
             }
-        }
-        if new_entry.start < min_start as i64 {
-            continue;
         }
         if end != 0 {
             new_entry.duration = end - new_entry.start;
         }
-        if let Some(index) = new_entry.desc.find("Microsoft Teams meeting\\nJoin") {
+
+        if let Some(index) = new_entry.desc.find("________________________________________________________________________________") {
             new_entry.desc.truncate(index);
         }
-        output.push(new_entry);
+
+        // Recurring rules
+        if let Some(recurring) = &recurring {
+            let date_time = NaiveDateTime::from_timestamp_opt(new_entry.start, 0).unwrap();
+            let offset = Tz::UTC.offset_from_utc_date(&date_time.date());
+            let date_time = DateTime::<Tz>::from_utc(date_time, offset);
+
+            let rrule = RRule::from_str(recurring.as_str()).and_then(|rrule|rrule.validate(date_time));
+            if let Ok(rrule) = rrule
+            {
+                tracing::info!("Recurring entry {} - {}", recurring, new_entry.title);
+                let rrule_set = RRuleSet::new(date_time).rrule(rrule);
+                let rrules = rrule_set.into_iter();
+                for i in rrules {
+                    if i > chrono_now { break; }
+                    if i < min_chrono_date { continue; }
+                    new_entry.start = i.timestamp();
+                    if entries_map.insert(new_entry.start) {
+                        tracing::info!("Recurring entry {} ({})", i, new_entry.start);
+                        output.push(new_entry.clone());
+                    }
+                }
+            } else {
+                tracing::warn!("Failed to parse recurring entry {} - {}", recurring, new_entry.title);
+            }
+        } else {
+            if new_entry.start >= min_start as i64 && entries_map.insert(new_entry.start) {
+                tracing::info!("Normal entry {}", new_entry.start);
+                output.push(new_entry);
+            }
+        }
     }
 
     Ok(output)
