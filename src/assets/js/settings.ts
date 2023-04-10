@@ -74,7 +74,7 @@ cloudSettings.subscribe(value => {
 async function syncSettingsToCloud(cloudSettingsChanged: (arg0: CloudSettings) => Promise<void>) {
     const s = get(cloudSettings);
     const local: Settings = get(localSettings);
-    if (!local.last_updated) local.last_updated = Math.round(Date.now() / 1000);
+    local.last_updated = Math.round(Date.now() / 1000);
     await post(s.cloud_url + "/api/settings", "application/json", JSON.stringify(local));
     await cloudSettingsChanged(s);
 }
