@@ -36,9 +36,17 @@
         });
         const local: Settings = get(localSettings);
         if (!local.last_updated) local.last_updated = 0;
-        newerCloudSettings = remoteSettings.last_updated !== undefined
-            && remoteSettings.last_updated > local.last_updated;
-        newerLocalSettings = remoteSettings.last_updated === undefined || remoteSettings.last_updated < local.last_updated;
+        if (!remoteSettings.last_updated) remoteSettings.last_updated = 0;
+        newerCloudSettings = remoteSettings.last_updated > local.last_updated;
+        newerLocalSettings = remoteSettings.last_updated < local.last_updated;
+    }
+
+    function modifiedLocalSettings() {
+        const local: Settings = get(localSettings);
+        local.last_updated = Math.round(Date.now() / 1000);
+        newerLocalSettings = true;
+        localSettings.set(local);
+        console.log("MODIFIED", newerLocalSettings, local.last_updated);
     }
 
     onMount(() => {
@@ -67,45 +75,49 @@
     <div class="border p-3 mb-3">
         <h4>Legal</h4>
         <FormGroup floating label="Full Name">
-            <Input placeholder="Enter a value" bind:value={$localSettings.name}/>
+            <Input placeholder="Enter a value" bind:value={$localSettings.name} on:change={modifiedLocalSettings}/>
         </FormGroup>
         <FormGroup floating label="Company Name">
-            <Input placeholder="Enter a value" bind:value={$localSettings.company}/>
+            <Input placeholder="Enter a value" bind:value={$localSettings.company} on:change={modifiedLocalSettings}/>
         </FormGroup>
         <FormGroup floating label="Client Name">
-            <Input placeholder="Enter a value" bind:value={$localSettings.client}/>
+            <Input placeholder="Enter a value" bind:value={$localSettings.client} on:change={modifiedLocalSettings}/>
         </FormGroup>
     </div>
     <div class="border p-3">
         <h4>Timesheets</h4>
         <FormGroup floating label="ICS Outlook Calendar Link">
-            <Input placeholder="https://URL" bind:value={$localSettings.ics_url} on:change={() => newerLocalSettings = true}/>
+            <Input placeholder="https://URL" bind:value={$localSettings.ics_url}
+                   on:change={modifiedLocalSettings}/>
         </FormGroup>
         <FormGroup floating label="Gitlab URL">
-            <Input placeholder="https://URL" bind:value={$localSettings.gitlab_url} on:change={() => newerLocalSettings = true}/>
+            <Input placeholder="https://URL" bind:value={$localSettings.gitlab_url}
+                   on:change={modifiedLocalSettings}/>
         </FormGroup>
         <FormGroup floating label="Gitlab API Token">
-            <Input placeholder="https://URL" bind:value={$localSettings.gitlab_access_token} on:change={() => newerLocalSettings = true}/>
+            <Input placeholder="https://URL" bind:value={$localSettings.gitlab_access_token}
+                   on:change={modifiedLocalSettings}/>
         </FormGroup>
         <div class="form-group mb-3">
             <label>ICS Filter</label>
             <MultiSelect allowUserOptions="append" bind:selected={$localSettings.ics_filter}
-                         bind:options={$localSettings.ics_filter} on:change={() => newerLocalSettings = true}/>
+                         bind:options={$localSettings.ics_filter} on:change={modifiedLocalSettings}/>
         </div>
         <div class="form-group mb-3">
             <label>Projects</label>
             <MultiSelect allowUserOptions="append" bind:selected={$localSettings.projects}
-                         bind:options={$localSettings.projects} on:change={() => newerLocalSettings = true}/>
+                         bind:options={$localSettings.projects} on:change={modifiedLocalSettings}/>
         </div>
         <div class="form-group mb-3">
             <label>Tags</label>
             <MultiSelect allowUserOptions="append" bind:selected={$localSettings.tags}
-                         bind:options={$localSettings.tags} on:change={() => newerLocalSettings = true}/>
+                         bind:options={$localSettings.tags} on:change={modifiedLocalSettings}/>
         </div>
     </div>
     <div class="p-3">
-        {#if newerLocalSettings}
-            <button type="button" class="btn btn-primary" on:click={() => syncSettingsToCloud(cloudSettingsChanged)}>
+        {#if $cloudSettings.cloud_url && $cloudSettings.cloud_api_key}
+            <button type="button" class="btn" class:btn-secondary={!newerLocalSettings} class:btn-primary={newerLocalSettings}
+                    on:click={() => syncSettingsToCloud(cloudSettingsChanged)}>
                 Sync Settings to Cloud
             </button>
         {/if}
