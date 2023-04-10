@@ -12,7 +12,7 @@
         DayEntry,
         SelectedDate,
         GitlabActivityEntry,
-        GitlabActivityEntryPushData
+        ICSEntry
     } from "../assets/js/data";
 
     import {cloudSettings, localSettings} from "../assets/js/settings";
@@ -257,10 +257,28 @@
 
     let loadingICS = false;
 
+
     async function addFromICS() {
         loadingICS = true;
-        const icsEntries = await fetchICS(currentDayDate.getMonth(), currentDayDate.getDate());
+        const icsEntries: ICSEntry[] = await fetchICS(currentDayDate.getMonth(), currentDayDate.getDate());
         console.log("ics entries", icsEntries);
+
+        for (let entry of icsEntries) {
+            const dayEntry: DayEntry = {
+                description: entry.title.replaceAll("\\n", "\n") + "\n" + entry.desc.replaceAll("\\n", "\n"),
+                duration: entry.duration / 60,
+                import_tags: [entry.uid],
+                project: ["Agami"],
+                tags: []
+            };
+            if (entry.oof) dayEntry.description = "OOF " + dayEntry.description;
+            if (!entry.confirmed) dayEntry.description = "NOT CONFIRMED " + dayEntry.description;
+            dayEntry.description = dayEntry.description.trim();
+            currentDay.entries.push(dayEntry);
+        }
+
+        await saveDay();
+        currentDay.entries = currentDay.entries;
 
         loadingICS = false;
     }
@@ -284,7 +302,15 @@
 
     function shortDate(created_at: string) {
         const d = new Date(created_at)
-        return `${d.getMonth() + 1}-${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
+        return `${zeroPad(d.getMonth() + 1)}-${zeroPad(d.getDate())} ${zeroPad(d.getHours())}:${zeroPad(d.getMinutes())}`
+    }
+
+    function missingTime(currentDay: OneDay) {
+        const remaining = currentDay.expected_min_hours * 60 - sumActivities(currentDay.entries);
+        if (remaining > 0)
+            return `${zeroPad(Math.round(remaining / 60))}:${zeroPad(Math.round(remaining % 60))}`
+        else
+            return "";
     }
 
 </script>
@@ -380,14 +406,14 @@
             <tr class="border-bottom">
                 <td></td>
                 <td colspan="4">
-                  <textarea bind:value={dayEntry.description} on:change={dayHasChanged} rows="3" class="form-control"
+                  <textarea bind:value={dayEntry.description} on:change={dayHasChanged} rows="1" class="form-control"
                             placeholder="Descriptive text..."></textarea>
                 </td>
             </tr>
         {/each}
         <tr>
             <td colspan="5">
-                <h3>New entry</h3></td>
+                <h3>New entry (Remaining: {missingTime(currentDay)})</h3></td>
         </tr>
         <tr>
             <td></td>
