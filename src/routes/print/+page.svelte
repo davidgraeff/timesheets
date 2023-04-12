@@ -2,6 +2,7 @@
     import '@carbon/styles/css/styles.css';
     import '@carbon/charts/styles.css';
     import {BarChartSimple, PieChart} from "@carbon/charts-svelte";
+    import {marked} from 'marked';
 
     import type {SelectedDate, OneMonth} from "../../assets/js/data.js";
 
@@ -12,7 +13,7 @@
     const zeroPad = (num, places = 2) => String(num).padStart(places, '0')
 
     function hh_mm(minutes: number) {
-        return zeroPad(Math.round(minutes / 60)) + ":" + zeroPad(Math.round(minutes % 60));
+        return zeroPad(Math.floor(minutes / 60)) + ":" + zeroPad(Math.round(minutes % 60));
     }
 
     interface ProjectHours {
@@ -148,7 +149,7 @@
             let projectDay: ProjectDays = {activities: [], date: dayDate};
             for (let entry of day.entries) {
                 let activity: ProjectActivity = {
-                    description: entry.description,
+                    description: marked.parse(entry.description),
                     minutes: entry.duration,
                     project: "",
                     tags: entry.tags
@@ -208,6 +209,12 @@
         for (let [tag, duration] of tags) {
             newPageData.tag_sums.push({name: tag, minutes: duration});
         }
+
+        newPageData.tag_sums = newPageData.tag_sums.sort((a: ProjectHours, b: ProjectHours) => {
+            const x = a.minutes;
+            const y = b.minutes;
+            return ((x < y) ? 1 : ((x > y) ? -1 : 0));
+        });
         for (let [tag, duration] of projects) {
             newPageData.projects.push({name: tag, minutes: duration});
         }
@@ -230,6 +237,22 @@
             return tag + ",";
         else
             return tag;
+    }
+
+    function allTags(tags: string[]) {
+        let result = "";
+        for (let index = 0; index < tags.length; ++index) {
+            const tag = tags[index];
+            result += withComma(tag, index, tags.length) + " ";
+        }
+        return result;
+    }
+
+    function sumActivities(activities: ProjectActivity[]) {
+        let total = 0;
+        for (let activity of activities)
+            total += activity.minutes;
+        return total;
     }
 
 </script>
@@ -292,35 +315,35 @@
 
     <div class="clearfix"></div>
     {#each exampleData.weeks as week}
-        <h4 class="text-end">Week {week.period}</h4>
-        <hr>
-        <table class="table print-week-table">
-            <tbody>
+        <div class="avoid-page-break mb-2">
+            <h4 class="text-end pt-2">Week {week.period}</h4>
+            <hr>
             {#each week.days as day}
-                <tr>
-                    <td><span>{weekday(day.date)}</span> {zeroPad(day.date.getDate())}.</td>
-                    <td>
-                        <table class="table table-striped print-day-table">
-                            <tbody>
-                            {#each day.activities as activity}
-                                <tr>
-                                    <td>{activity.project}</td>
-                                    <td>{hh_mm(activity.minutes)} h</td>
-                                    <td class="ptag">
-                                        {#each activity.tags as tag, index}
-                                            <span>{withComma(tag, index, activity.tags.length)}</span>&nbsp;
-                                        {/each}
-                                    </td>
-                                    <td>{@html activity.description.replace('\n', '<br>')}</td>
-                                </tr>
-                            {/each}
-                            </tbody>
-                        </table>
-                    </td>
-                </tr>
+                <div class="avoid-page-break">
+                    <div class="week-day">
+                        <span>{weekday(day.date)}</span> {zeroPad(day.date.getDate())}
+                        ({hh_mm(sumActivities(day.activities))})
+                    </div>
+                    <table class="table table-striped print-day-table">
+                        <tbody>
+                        {#each day.activities as activity}
+                            <tr>
+                                <td>{activity.project}</td>
+                                <td>{hh_mm(activity.minutes)} h</td>
+                                <td class="ptag">
+                                    {allTags(activity.tags)}
+                                    <!--{#each activity.tags as tag, index}-->
+                                    <!--    {withComma(tag, index, activity.tags.length)}&nbsp;-->
+                                    <!--{/each}-->
+                                </td>
+                                <td>{@html activity.description}</td>
+                            </tr>
+                        {/each}
+                        </tbody>
+                    </table>
+                </div>
             {/each}
-            </tbody>
-        </table>
+        </div>
     {/each}
 
     <section style="page-break-inside: avoid;">
@@ -353,44 +376,49 @@
   .print-day-table {
     page-break-inside: avoid;
 
-    td:first-child, td:nth-child(1), td:nth-child(2) {
+    td:first-child {
       white-space: nowrap;
+      width: 70px;
     }
 
-    td:first-child {
-      min-width: 70px;
+    td:nth-child(2) {
+      white-space: nowrap;
+      width: 80px;
+    }
+
+    td:nth-child(3) {
+      width: 130px;
+    }
+
+    td:nth-child(4){
+      :global(p:last-child) {
+        margin-bottom: 0;
+      }
+
+      :global(ul) {
+        list-style: circle;
+      }
     }
 
     margin-bottom: 0;
   }
 
-  td.ptag {
-    white-space: normal;
-
-    span {
-      white-space: nowrap;
-    }
+  .avoid-page-break {
+    page-break-inside: avoid;
   }
 
-  .print-week-table {
-    width: auto;
-    page-break-inside: avoid;
+  .week-day {
+    font-weight: 700;
+    --bs-text-opacity: 1;
+    color: rgba(var(--bs-primary-rgb), var(--bs-text-opacity));
 
-    > tbody > tr > td:first-child {
-      font-weight: 700;
-      --bs-text-opacity: 1;
-      color: rgba(var(--bs-primary-rgb), var(--bs-text-opacity));
+    white-space: nowrap;
+    margin-bottom: 10px;
+    margin-top: 10px;
 
-      white-space: nowrap;
-
-      span {
-        width: 35px;
-        display: inline-block;
-      }
-    }
-
-    td:last-child {
-      width: 100%;
+    span {
+      width: 35px;
+      display: inline-block;
     }
   }
 

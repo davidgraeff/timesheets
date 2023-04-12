@@ -151,11 +151,13 @@
 
 
     let gitlabActivities: GitlabActivityEntry[] = [];
+    let icsEntriesOfCurrentDay: string[] = [];
 
     function changeDay(dayIndex: number) {
         const d = new Date(get(selectedDate).date)
         d.setDate(dayIndex);
         gitlabActivities = [];
+        icsEntriesOfCurrentDay = [];
         selectedDate.set({date: d.getTime()});
     }
 
@@ -261,11 +263,22 @@
     async function addFromICS() {
         loadingICS = true;
         const icsEntries: ICSEntry[] = await fetchICS(currentDayDate.getMonth(), currentDayDate.getDate());
-        console.log("ics entries", icsEntries);
 
+
+        const knownUids = new Set<string>()
+        for (let entry of currentDay.entries) {
+            for (let uid of entry.import_tags)
+                knownUids.add(uid);
+        }
+
+        let icsEntriesCurrentDayLocal = [];
         for (let entry of icsEntries) {
+            icsEntriesCurrentDayLocal.push(`${hh_mm(entry.duration / 60)}: ${entry.title.replaceAll("\\n", "\n")}`);
+
+            if (knownUids.has(entry.uid))
+                continue;
             const dayEntry: DayEntry = {
-                description: entry.title.replaceAll("\\n", "\n") + "\n" + entry.desc.replaceAll("\\n", "\n"),
+                description: entry.title.replaceAll("\\n", "\n"), //  + "\n" + entry.desc.replaceAll("\\n", "\n")
                 duration: entry.duration / 60,
                 import_tags: [entry.uid],
                 project: ["Agami"],
@@ -277,6 +290,8 @@
             currentDay.entries.push(dayEntry);
         }
 
+        icsEntriesOfCurrentDay = icsEntriesCurrentDayLocal;
+
         await saveDay();
         currentDay.entries = currentDay.entries;
 
@@ -284,6 +299,10 @@
     }
 
     let loadingGitlabActivity = false;
+
+    function hh_mm(minutes: number) {
+        return zeroPad(Math.floor(minutes / 60)) + ":" + zeroPad(Math.round(minutes % 60));
+    }
 
     async function showGitlabActivity() {
         loadingGitlabActivity = true;
@@ -306,11 +325,9 @@
     }
 
     function missingTime(currentDay: OneDay) {
-        const remaining = currentDay.expected_min_hours * 60 - sumActivities(currentDay.entries);
-        if (remaining > 0)
-            return `${zeroPad(Math.round(remaining / 60))}:${zeroPad(Math.round(remaining % 60))}`
-        else
-            return "";
+        const current = sumActivities(currentDay.entries);
+        const remaining = currentDay.expected_min_hours * 60 - current;
+        return `Current: ${hh_mm(current)}. Remaining: ${hh_mm(remaining)}`;
     }
 
 </script>
@@ -413,7 +430,7 @@
         {/each}
         <tr>
             <td colspan="5">
-                <h3>New entry (Remaining: {missingTime(currentDay)})</h3></td>
+                <h3>New entry ({missingTime(currentDay)})</h3></td>
         </tr>
         <tr>
             <td></td>
@@ -466,6 +483,14 @@
 
         </div>
     </div>
+
+    {#if icsEntriesOfCurrentDay.length > 0}
+        <ul>
+            {#each icsEntriesOfCurrentDay as icsEntry}
+                <li>{icsEntry}</li>
+            {/each}
+        </ul>
+    {/if}
 
     {#if gitlabActivities.length > 0}
         <table class="table mt-3">
