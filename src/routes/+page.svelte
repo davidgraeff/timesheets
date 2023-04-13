@@ -46,6 +46,7 @@
     function setExpectedMinHours(event: Event) {
         const target = event.target as HTMLInputElement;
         currentDay.expected_min_hours = Math.round(target.valueAsNumber / 1000 / 60 / 60);
+        dayHasChanged();
     }
 
     const WEEK_DAY_NAMES = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
@@ -115,19 +116,23 @@
                     behavior: 'smooth',
                     inline: 'center'
                 });
-            enableClass("border-danger", el.classList, dayInMonth == day);
-            enableClass("text-decoration-line-through", el.classList, dayEntry.holiday || dayEntry.sick);
             const sumMinutes = sumActivities(dayEntry.entries);
-            const allEntries = dayEntry.holiday || dayEntry.sick || dayEntry.expected_min_hours * 60 < sumMinutes;
+            const allEntries = dayEntry.holiday || dayEntry.sick || dayEntry.expected_min_hours * 60 <= sumMinutes;
             const dayDate = new Date(localDate.getFullYear(), localDate.getMonth(), dayInMonth);
             const dayOfWeek = translateToMondayFirstDay[dayDate.getDay()];
-            enableClass("bg-success", el.classList, allEntries && dayOfWeek < 5);
+            enableClass("text-decoration-line-through", el.classList, dayEntry.holiday || dayEntry.sick);
+            enableClass("text-decoration-underline", el.classList, dayEntry.expected_min_hours * 60 < sumMinutes && dayInMonth != day);
+            enableClass("bg-success", el.classList, allEntries && dayOfWeek < 5 && dayInMonth != day);
+
+            enableClass("border-danger", el.classList, dayInMonth == day);
             enableClass("border-warning", el.classList, sumMinutes === 0 && dayOfWeek < 5 && dayInMonth != day);
             enableClass("border-success", el.classList, sumMinutes > 0 && dayInMonth != day);
+        } else {
+            console.warn("Did not find element for", dayInMonth);
         }
     }
 
-    $: if (browser) applyStyleForDay(currentDayDate.getDate(), currentDayDate, currentDay);
+    //$: if (browser) applyStyleForDay(currentDayDate.getDate(), currentDayDate, currentDay);
 
     function setDay(localDate: Date) {
         if (!browser)
