@@ -315,35 +315,35 @@
 
     <div class="clearfix"></div>
     {#each exampleData.weeks as week}
-        <div class="avoid-page-break mb-2">
-            <h4 class="text-end pt-2">Week {week.period}</h4>
-            <hr>
-            {#each week.days as day}
-                <div class="avoid-page-break">
-                    <div class="week-day">
-                        <span>{weekday(day.date)}</span> {zeroPad(day.date.getDate())}
-                        ({hh_mm(sumActivities(day.activities))})
-                    </div>
-                    <table class="table table-striped print-day-table">
-                        <tbody>
-                        {#each day.activities as activity}
-                            <tr>
-                                <td>{activity.project}</td>
-                                <td>{hh_mm(activity.minutes)} h</td>
-                                <td class="ptag">
-                                    {allTags(activity.tags)}
-                                    <!--{#each activity.tags as tag, index}-->
-                                    <!--    {withComma(tag, index, activity.tags.length)}&nbsp;-->
-                                    <!--{/each}-->
-                                </td>
-                                <td>{@html activity.description}</td>
-                            </tr>
-                        {/each}
-                        </tbody>
-                    </table>
+        {#each week.days as day, index}
+            <div class="avoid-page-break">
+                {#if index === 0}
+                    <h4 class="text-end pt-2">Week {week.period}</h4>
+                    <hr class="mb-2">
+                {/if}
+                <div class="week-day">
+                    <span>{weekday(day.date)}</span> {zeroPad(day.date.getDate())}
+                    ({hh_mm(sumActivities(day.activities))})
                 </div>
-            {/each}
-        </div>
+                <table class="table table-striped print-day-table">
+                    <tbody>
+                    {#each day.activities as activity}
+                        <tr>
+                            <td>{activity.project}</td>
+                            <td>{hh_mm(activity.minutes)} h</td>
+                            <td class="ptag">
+                                {allTags(activity.tags)}
+                                <!--{#each activity.tags as tag, index}-->
+                                <!--    {withComma(tag, index, activity.tags.length)}&nbsp;-->
+                                <!--{/each}-->
+                            </td>
+                            <td>{@html activity.description}</td>
+                        </tr>
+                    {/each}
+                    </tbody>
+                </table>
+            </div>
+        {/each}
     {/each}
 
     <section style="page-break-inside: avoid;">
@@ -390,7 +390,7 @@
       width: 130px;
     }
 
-    td:nth-child(4){
+    td:nth-child(4) {
       :global(p:last-child) {
         margin-bottom: 0;
       }
