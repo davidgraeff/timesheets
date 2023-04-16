@@ -1,0 +1,12 @@
+ARG BUILD_FROM
+FROM $BUILD_FROM
+
+WORKDIR /
+
+COPY build/ /build/
+COPY usr/ /usr/
+COPY etc/ /etc/
+COPY data/ /data_initial/
+
+RUN chmod a+x /usr/bin/timesheet-backend
+RUN chmod a+x /etc/services.d/timesheet-web/*

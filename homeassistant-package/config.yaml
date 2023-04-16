@@ -1,0 +1,11 @@
+name: "Timesheet web"
+version: "1.16.0"
+slug: "timesheet-web"
+description: "Timesheet Web"
+arch:
+  - aarch64
+ingress: true
+webui: http://[HOST]:[PORT:8099]/
+homeassistant: 2023.1.1
+init: false
+

@@ -1,0 +1,9 @@
+#!/usr/bin/with-contenv bashio
+# s6-overlay docs: https://github.com/just-containers/s6-overlay
+cd /
+if [ ! -f /data/settings.json ]; then
+   cp -r /data_initial/* /data/
+fi
+export WWW_DIR=/build
+export TIME_SHEET_DIR=/data
+exec /usr/bin/timesheet-backend
