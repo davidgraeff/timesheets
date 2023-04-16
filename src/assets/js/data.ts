@@ -1,7 +1,7 @@
 import {get, writable} from "svelte/store";
 import Dexie, {type Table} from 'dexie';
 import {fetchWithTimeout, post} from "./fetch";
-import {cloudSettings, localSettings} from "./settings";
+import {cloudSettings, localSettings, cloudUrl} from "./settings";
 
 interface DayEntry {
     import_tags: string[],
@@ -67,9 +67,9 @@ export async function loadSheet(year: number, month: number): Promise<LoadSheetR
 
     // cloud
     const s = get(cloudSettings);
-    if (s.cloud_url && s.cloud_api_key) {
+    if (cloudUrl && s.cloud_api_key) {
         try {
-            const response = await fetchWithTimeout(s.cloud_url + `/api/timesheets/${year}_${monthStartWith1}`, {});
+            const response = await fetchWithTimeout(cloudUrl + `/timesheets/${year}_${monthStartWith1}`, {});
             const dbEntry: OneMonth = await response.json();
             if (dbEntry.created !== undefined && dbEntry.change_id !== undefined)
                 return {cloud: true, month: fixMonth(dbEntry)};
@@ -115,9 +115,9 @@ export async function storeSheet(sheet: OneMonth): Promise<OneMonth> {
 
     // cloud
     const s = get(cloudSettings);
-    if (s.cloud_url && s.cloud_api_key) {
+    if (cloudUrl && s.cloud_api_key) {
         try {
-            await post(s.cloud_url + `/api/timesheets/${sheet.year}_${sheet.month}`, "application/json", JSON.stringify(sheet));
+            await post(cloudUrl + `/timesheets/${sheet.year}_${sheet.month}`, "application/json", JSON.stringify(sheet));
         } catch (e) {
             console.log("Failed to store sheet to cloud", sheet.year, sheet.month, e);
         }

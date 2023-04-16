@@ -57,8 +57,8 @@
     };
 
     const project_chart_options = {
-        height: "170px",
-        width: "320px",
+        height: "220px",
+        width: "420px",
         resizable: false,
         toolbar: {enabled: false},
         pie: {
@@ -215,9 +215,16 @@
             const y = b.minutes;
             return ((x < y) ? 1 : ((x > y) ? -1 : 0));
         });
+
         for (let [tag, duration] of projects) {
             newPageData.projects.push({name: tag, minutes: duration});
         }
+
+        newPageData.projects = newPageData.projects.sort((a: ProjectHours, b: ProjectHours) => {
+            const x = a.minutes;
+            const y = b.minutes;
+            return ((x < y) ? 1 : ((x > y) ? -1 : 0));
+        });
 
         exampleData = newPageData;
     }
@@ -354,11 +361,23 @@
                     data={projectHoursChartData(exampleData.projects)}
                     options={project_chart_options}
             />
+            <table class="table table-striped" style="height: fit-content;width: fit-content; min-width: 220px">
+                <tbody>
+                {#each exampleData.projects as project}
+                    <tr>
+                        <td>{project.name}</td>
+                        <td class="text-end text-nowrap">{hh_mm(project.minutes)} h</td>
+                    </tr>
+                {/each}
+                </tbody>
+            </table>
+        </div>
+        <div class="d-flex gap-2 align-items-center justify-content-center flex-nowrap">
             <PieChart
                     data={projectHoursChartData(exampleData.tag_sums)}
                     options={project_chart_options}
             />
-            <table class="table table-striped" style="height: fit-content;width: fit-content">
+            <table class="table table-striped" style="height: fit-content;width: fit-content; min-width: 220px">
                 <tbody>
                 {#each exampleData.tag_sums as project}
                     <tr>

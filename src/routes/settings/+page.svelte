@@ -1,10 +1,10 @@
 <script lang="ts">
     import {Form, FormGroup, Input} from "sveltestrap";
     import MultiSelect from 'svelte-multiselect'
-    import {onDestroy, onMount} from "svelte";
-    import {localSettings, cloudSettings, type CloudSettings} from "../../assets/js/settings";
+    import {onMount} from "svelte";
+    import {localSettings, cloudSettings, type CloudSettings, cloudUrl} from "../../assets/js/settings";
     import type {Settings} from "../../assets/js/settings";
-    import {getjson, post, setAuthHeader} from "../../assets/js/fetch";
+    import {getjson, setAuthHeader} from "../../assets/js/fetch";
     import {get} from "svelte/store";
     import {syncSettings, syncSettingsToCloud} from "../../assets/js/settings.js";
 
@@ -12,17 +12,16 @@
     let newerLocalSettings = false;
 
     async function cloudSettingsChanged(s: CloudSettings) {
-        const url = s.cloud_url + "/api/settings";
         const key = s.cloud_api_key;
 
         setAuthHeader(key);
 
-        if (!key || !url) {
+        if (!key || !cloudUrl) {
             newerCloudSettings = false;
             return;
         }
 
-        const remoteSettings: Settings = await getjson<Settings>(url).catch(() => {
+        const remoteSettings: Settings = await getjson<Settings>(cloudUrl + "/settings").catch(() => {
             return {
                 client: "",
                 company: "",
@@ -59,8 +58,7 @@
     <div class="border p-3 mb-3">
         <h4>Cloud</h4>
         <FormGroup floating label="Cloud URL">
-            <Input placeholder="Enter a value" bind:value={$cloudSettings.cloud_url}
-                   on:blur={() => cloudSettingsChanged($cloudSettings)}/>
+            <Input placeholder="Enter a value" value={cloudUrl} disabled/>
         </FormGroup>
         <FormGroup floating label="Cloud API Key">
             <Input placeholder="Enter a value" bind:value={$cloudSettings.cloud_api_key}
@@ -99,24 +97,25 @@
                    on:change={modifiedLocalSettings}/>
         </FormGroup>
         <div class="form-group mb-3">
-            <label>ICS Filter</label>
+            <div>ICS Filter</div>
             <MultiSelect allowUserOptions="append" bind:selected={$localSettings.ics_filter}
                          bind:options={$localSettings.ics_filter} on:change={modifiedLocalSettings}/>
         </div>
         <div class="form-group mb-3">
-            <label>Projects</label>
+            <div>Projects</div>
             <MultiSelect allowUserOptions="append" bind:selected={$localSettings.projects}
                          bind:options={$localSettings.projects} on:change={modifiedLocalSettings}/>
         </div>
         <div class="form-group mb-3">
-            <label>Tags</label>
+            <div>Tags</div>
             <MultiSelect allowUserOptions="append" bind:selected={$localSettings.tags}
                          bind:options={$localSettings.tags} on:change={modifiedLocalSettings}/>
         </div>
     </div>
     <div class="p-3">
         {#if $cloudSettings.cloud_url && $cloudSettings.cloud_api_key}
-            <button type="button" class="btn" class:btn-secondary={!newerLocalSettings} class:btn-primary={newerLocalSettings}
+            <button type="button" class="btn" class:btn-secondary={!newerLocalSettings}
+                    class:btn-primary={newerLocalSettings}
                     on:click={() => syncSettingsToCloud(cloudSettingsChanged)}>
                 Sync Settings to Cloud
             </button>

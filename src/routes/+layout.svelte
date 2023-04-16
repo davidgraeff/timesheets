@@ -11,6 +11,7 @@
     } from 'sveltestrap';
     import {shortcut} from "../assets/js/shortcut"
     import {page} from '$app/stores';
+    import {base} from '$app/paths';
     import {onMount} from "svelte";
     import {selectedDate} from "../assets/js/data";
 
@@ -35,48 +36,50 @@
 </script>
 
 <header class="d-print-none container container-lg pt-3">
-    <nav class="navbar navbar-expand-md">
-        <ul class="nav nav-tabs me-auto">
+    <nav class="navbar"><!--navbar-expand-md-->
+        <ul class="nav nav-tabs flex-nowrap">
             <li class="nav-item">
-                <a use:shortcut={{alt: true, code: 'KeyE'}} class="nav-link" class:active={$page.url.pathname === "/"}
-                   aria-current="page" href="/">Edit (E)</a>
+                <a use:shortcut={{alt: true, code: 'KeyE'}} class="nav-link text-nowrap"
+                   class:active={$page.url.pathname === `${base}/`}
+                   aria-current="page" href="{base}/">Edit (E)</a>
             </li>
             <li class="nav-item">
-                <a use:shortcut={{alt: true, code: 'KeyP'}} class="nav-link"
-                   class:active={$page.url.pathname === "/print"} aria-current="page" href="/print">Print (P)</a>
+                <a use:shortcut={{alt: true, code: 'KeyP'}} class="nav-link text-nowrap"
+                   class:active={$page.url.pathname === `${base}/print`}
+                   aria-current="page" href="{base}/print">Print (P)</a>
             </li>
             <li class="nav-item">
-                <a use:shortcut={{alt: true, code: 'KeyC'}} class="nav-link"
-                   class:active={$page.url.pathname === "/settings"} aria-current="page" href="/settings">Configuration
-                    (C)</a>
+                <a use:shortcut={{alt: true, code: 'KeyC'}} class="nav-link text-nowrap"
+                   class:active={$page.url.pathname === `${base}/settings`}
+                   aria-current="page" href="{base}/settings">Config (C)</a>
             </li>
         </ul>
-        <NavbarToggler on:click={() => (isOpen = !isOpen)}/>
-        <Collapse {isOpen} navbar expand="md" on:update={handleUpdate}>
-            <Nav navbar>
-                <input type="date" class="form-control"
-                       value={new Date($selectedDate.date).toISOString().split('T')[0]}
-                       on:input={e => setCurrentDate(e.target.valueAsNumber) }/>
-                {#if $page.url.pathname === "/"}
-                    <Dropdown nav inNavbar>
-                        <DropdownToggle nav caret>Export</DropdownToggle>
-                        <DropdownMenu right>
-                            <DropdownItem>Export .sheet</DropdownItem>
-                        </DropdownMenu>
-                    </Dropdown>
-                    <Dropdown nav inNavbar>
-                        <DropdownToggle nav caret>Import</DropdownToggle>
-                        <DropdownMenu right>
-                            <DropdownItem>Import .sheet</DropdownItem>
-                            <DropdownItem divider/>
-                            <DropdownItem header>This month</DropdownItem>
-                            <DropdownItem>Add entries from ICS</DropdownItem>
-                            <DropdownItem>Clear by filter</DropdownItem>
-                        </DropdownMenu>
-                    </Dropdown>
-                {/if}
-            </Nav>
-        </Collapse>
+        <input type="date" class="form-control" style="max-width: 150px"
+               value={new Date($selectedDate.date).toISOString().split('T')[0]}
+               on:input={e => setCurrentDate(e.target.valueAsNumber) }/>
+<!--        <NavbarToggler on:click={() => (isOpen = !isOpen)}/>-->
+<!--        <Collapse {isOpen} navbar expand="md" on:update={handleUpdate}>-->
+<!--            <Nav navbar>-->
+<!--                {#if $page.url.pathname === "/"}-->
+<!--                    <Dropdown nav inNavbar>-->
+<!--                        <DropdownToggle nav caret>Export</DropdownToggle>-->
+<!--                        <DropdownMenu right>-->
+<!--                            <DropdownItem>Export .sheet</DropdownItem>-->
+<!--                        </DropdownMenu>-->
+<!--                    </Dropdown>-->
+<!--                    <Dropdown nav inNavbar>-->
+<!--                        <DropdownToggle nav caret>Import</DropdownToggle>-->
+<!--                        <DropdownMenu right>-->
+<!--                            <DropdownItem>Import .sheet</DropdownItem>-->
+<!--                            <DropdownItem divider/>-->
+<!--                            <DropdownItem header>This month</DropdownItem>-->
+<!--                            <DropdownItem>Add entries from ICS</DropdownItem>-->
+<!--                            <DropdownItem>Clear by filter</DropdownItem>-->
+<!--                        </DropdownMenu>-->
+<!--                    </Dropdown>-->
+<!--                {/if}-->
+<!--            </Nav>-->
+<!--        </Collapse>-->
     </nav>
 </header>
 <main>

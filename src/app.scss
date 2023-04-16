@@ -103,3 +103,9 @@ table.table-weeks {
     max-width: initial;
   }
 }
+
+.multiselect {
+  .selected {
+    max-width: 100px;
+  }
+}

@@ -402,7 +402,6 @@
             <td style="width: 100px">Duration</td>
             <td style="width: 120px">Project</td>
             <td>Tags</td>
-            <td></td>
         </tr>
         </thead>
         <tbody>
@@ -427,14 +426,14 @@
             </tr>
             <tr class="border-bottom">
                 <td></td>
-                <td colspan="4">
+                <td colspan="3">
                   <textarea bind:value={dayEntry.description} on:change={dayHasChanged} rows="1" class="form-control"
                             placeholder="Descriptive text..."></textarea>
                 </td>
             </tr>
         {/each}
         <tr>
-            <td colspan="5">
+            <td colspan="4">
                 <h3>New entry ({missingTime(currentDay)})</h3></td>
         </tr>
         <tr>
@@ -451,11 +450,9 @@
         </tr>
         <tr>
             <td></td>
-            <td colspan="4">
-                <div class="d-flex gap-2">
+            <td colspan="3">
                 <textarea bind:value={newDescription} on:blur={saveActivity} rows="3" class="form-control"
                           placeholder="Descriptive text..."></textarea>
-                </div>
             </td>
         </tr>
         </tbody>
