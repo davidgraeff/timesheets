@@ -14,13 +14,12 @@ pub mod api;
 use crate::{
     middlewares,
     store::{Store},
-    FRONT_PUBLIC,
 };
 
 /// Front end to server svelte build bundle, css and index.html from public folder
-pub fn front_public_route() -> Router {
+pub fn front_public_route(html_public_dir: &str) -> Router {
     Router::new()
-        .nest_service("/", ServeDir::new(FRONT_PUBLIC).not_found_service(handle_404.into_service()))
+        .nest_service("/", ServeDir::new(html_public_dir).not_found_service(handle_404.into_service()))
         .layer(TraceLayer::new_for_http())
 }
 

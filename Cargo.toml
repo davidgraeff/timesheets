@@ -3,3 +3,6 @@
 members = [
     "backend",
 ]
+
+[profile.release]
+strip = true

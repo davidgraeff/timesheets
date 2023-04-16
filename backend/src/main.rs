@@ -14,11 +14,11 @@ pub mod routes;
 mod store;
 
 // SETUP Constants
-const FRONT_PUBLIC: &str = "./build";
-const SERVER_PORT: &str = "8080";
+const WWW_DIR: &str = "./build";
+const SERVER_PORT: &str = "8099";
 const SERVER_HOST: &str = "0.0.0.0";
 const API_FIXED_SECRET: &str = "123456789";
-const TIME_SHEET_DIR: &str = "./time-sheets";
+const TIME_SHEET_DIR: &str = "./data";
 
 #[tokio::main]
 async fn main() {
@@ -31,13 +31,13 @@ async fn main() {
         .init();
 
     // configure server from environmental variables
-    let (port, host, secret, upload_dir) = from_env();
+    let (port, host, secret, timesheet_dir, www_dir) = from_env();
 
-    let upload_dir = PathBuf::from(upload_dir);
+    let timesheet_dir = PathBuf::from(timesheet_dir);
 
-    tokio::fs::create_dir_all(&upload_dir)
+    tokio::fs::create_dir_all(&timesheet_dir)
         .await
-        .expect("failed to create `uploads` directory");
+        .expect("failed to create `timesheet_dir` directory");
 
     let addr: SocketAddr = format!("{}:{}", host, port)
         .parse()
@@ -45,13 +45,21 @@ async fn main() {
 
     tracing::info!("listening on http://{}. (SERVER_HOST:SERVER_PORT). Secret: {} (SERVER_SECRET)", addr, &secret);
 
-    let shared_state = Arc::new(store::Store::new(secret, upload_dir));
+    if let Ok(files) = std::fs::read_dir(&timesheet_dir) {
+        for file in files {
+            if let Ok(file) = file {
+                tracing::info!("Found data file: {}", file.file_name().to_str().unwrap_or_default());
+            }
+        }
+    }
+
+    let shared_state = Arc::new(store::Store::new(secret, timesheet_dir));
 
     // crate::routes::api::fetch_ics(State(shared_state));
 
     // combine the front and backend into server
     let app = Router::new()
-        .merge(routes::front_public_route())
+        .merge(routes::front_public_route(&www_dir))
         .merge(routes::backend(shared_state));
 
     axum::Server::bind(&addr)
@@ -72,11 +80,12 @@ async fn shutdown_signal() {
 
 // Variables from Environment or default to configure server
 // port, host, secret
-fn from_env() -> (String, String, String, String) {
+fn from_env() -> (String, String, String, String, String) {
     (
         std::env::var("SERVER_PORT").ok().unwrap_or_else(|| SERVER_PORT.to_string()),
         std::env::var("SERVER_HOST").ok().unwrap_or_else(|| SERVER_HOST.to_string()),
         std::env::var("SERVER_SECRET").ok().unwrap_or_else(|| { API_FIXED_SECRET.to_string() }),
         std::env::var("TIME_SHEET_DIR").ok().unwrap_or_else(|| { TIME_SHEET_DIR.to_string() }),
+        std::env::var("WWW_DIR").ok().unwrap_or_else(|| { WWW_DIR.to_string() }),
     )
 }

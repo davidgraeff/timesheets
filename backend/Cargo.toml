@@ -10,9 +10,9 @@ description = ""
 readme = "README.md"
 
 [dependencies]
-axum = { version = "0.6", features = ["headers"] }
-tower-http = { version = "0.4", features = ["full"] }
-tokio = { version = "1", features = ["full"] }
+axum = { version = "0.6", default_features = false, features = ["default", "http2", "headers"] }
+tower-http = { version = "0.4", default_features = false, features = ["add-extension", "auth", "catch-panic", "cors", "compression-gzip", "compression-br", "decompression-gzip", "decompression-br", "follow-redirect", "fs", "limit", "normalize-path", "propagate-header", "redirect", "request-id", "sensitive-headers", "set-header", "set-status", "timeout", "util", "validate-request", "trace"] }
+tokio = { version = "1", default_features = false, features = ["fs", "net", "macros", "time", "rt", "rt-multi-thread", "signal"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 serde = { version = "1", features = ["derive"] }
@@ -20,8 +20,10 @@ serde_json = "1.0"
 futures = "0.3.27"
 tokio-util = "0.7.7"
 ical = { version = "0.8.0", features = ["serde-derive"] }
-reqwest = { version = "0.11", features = ["rustls-tls", "gzip", "brotli", "deflate"] }
-fluvio-jolt = "0.1"
-time = { version = "0.3.20", features= ["default", "parsing"] }
+reqwest = { version = "0.11", default_features = false, features = ["hyper-rustls", "gzip", "brotli", "deflate"] }
+time = { version = "0.3.20", default_features = false, features = ["default", "parsing"] }
 rrule = "0.10.0"
 chrono = "0.4.24"
+
+[profile.release]
+strip = true
