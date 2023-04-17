@@ -30,7 +30,9 @@
                 name: "",
                 projects: [],
                 tags: [],
-                last_updated: 0
+                last_updated: 0,
+                gitlab_url: "",
+                gitlab_access_token: ""
             };
         });
         const local: Settings = get(localSettings);

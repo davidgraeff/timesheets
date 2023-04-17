@@ -139,9 +139,9 @@ interface ICSEntry {
 
 export async function fetchICS(monthIndex: number, day: number): Promise<ICSEntry[]> {
     const s = get(cloudSettings);
-    if (s.cloud_url && s.cloud_api_key) {
+    if (s.cloud_api_key) {
         try {
-            const response = await fetchWithTimeout(s.cloud_url + `/api/fetch_ics/${monthIndex + 1}/${day}`, {timeout: 12000});
+            const response = await fetchWithTimeout(cloudUrl + `/fetch_ics/${monthIndex + 1}/${day}`, {timeout: 12000});
             return await response.json();
         } catch (e) {
             console.log("Failed to fetch ICS", e);

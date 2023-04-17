@@ -15,11 +15,10 @@
     import {onMount} from "svelte";
     import {selectedDate} from "../assets/js/data";
 
-    let isOpen = false;
-
-    function handleUpdate(event) {
-        isOpen = event.detail.isOpen;
-    }
+    // let isOpen = false;
+    // function handleUpdate(event) {
+    //     isOpen = event.detail.isOpen;
+    // }
 
     function setCurrentDate(unixTime: number) {
         console.log("SET", unixTime);

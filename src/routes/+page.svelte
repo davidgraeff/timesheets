@@ -15,14 +15,13 @@
         ICSEntry
     } from "../assets/js/data";
 
-    import {cloudSettings, localSettings} from "../assets/js/settings";
-    import type {Settings} from "../assets/js/settings";
+    import {localSettings} from "../assets/js/settings";
 
     import {onDestroy, onMount} from "svelte";
     import {shortcut} from "../assets/js/shortcut"
     import MultiSelect from 'svelte-multiselect'
     import {get} from "svelte/store";
-    import {FormGroup, Input, Progress} from "sveltestrap";
+    import {Progress} from "sveltestrap";
     import {browser} from "$app/environment";
     import HoursMinutes from "../assets/components/HoursMinutes.svelte";
     import ConfirmDialog from "../assets/components/ConfirmDialog.svelte";
