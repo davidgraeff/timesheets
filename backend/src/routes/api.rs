@@ -121,6 +121,7 @@ async fn fetch_ics(month: Option<u64>, day: Option<u64>, store: Arc<Store>) -> R
 
     let (buf, status) = async {
         let client = reqwest::Client::builder()
+            .https_only(true)
             .timeout(Duration::from_secs(10))
             .user_agent("Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/110.0")
             .build()?;
@@ -130,7 +131,10 @@ async fn fetch_ics(month: Option<u64>, day: Option<u64>, store: Arc<Store>) -> R
         let status = res.status();
         let buf = res.text().await?;
         Ok::<_, Box<dyn std::error::Error>>((buf, status))
-    }.await.map_err(|err| (StatusCode::NOT_FOUND, err.to_string()))?;
+    }.await.map_err(|err| {
+        tracing::error!("Failed to fetch ICS from {}: {:?}", &settings.ics_url, err);
+        return (StatusCode::NOT_FOUND, err.to_string());
+    })?;
 
     if status != 200 {
         tracing::info!("Fetch ICS failed {} {}", status, &buf);
@@ -277,7 +281,7 @@ fn convert(input: Vec<IcalEvent>) -> Result<Vec<ICSEntry>, Box<dyn std::error::E
             let offset = Tz::UTC.offset_from_utc_date(&date_time.date());
             let date_time = DateTime::<Tz>::from_utc(date_time, offset);
 
-            let rrule = RRule::from_str(recurring.as_str()).and_then(|rrule|rrule.validate(date_time));
+            let rrule = RRule::from_str(recurring.as_str()).and_then(|rrule| rrule.validate(date_time));
             if let Ok(rrule) = rrule
             {
                 tracing::info!("Recurring entry {} - {}", recurring, new_entry.title);
