@@ -1,6 +1,6 @@
 <script lang="ts">
     import '@carbon/styles/css/styles.css';
-    import '@carbon/charts/styles.css';
+    import '@carbon/charts-svelte/styles.css';
     import {BarChartSimple, PieChart} from "@carbon/charts-svelte";
     import {marked} from 'marked';
 
