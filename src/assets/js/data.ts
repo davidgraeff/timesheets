@@ -1,7 +1,7 @@
 import {get, writable} from "svelte/store";
 import Dexie, {type Table} from 'dexie';
 import {fetchWithTimeout, post} from "./fetch";
-import {cloudSettings, localSettings, cloudUrl} from "./settings";
+import {cloudSettings, localSettings} from "./settings";
 
 interface DayEntry {
     import_tags: string[],
@@ -67,9 +67,9 @@ export async function loadSheet(year: number, month: number): Promise<LoadSheetR
 
     // cloud
     const s = get(cloudSettings);
-    if (cloudUrl && s.cloud_api_key) {
+    if (s.cloud_url && s.cloud_api_key) {
         try {
-            const response = await fetchWithTimeout(cloudUrl + `/timesheets/${year}_${monthStartWith1}`, {});
+            const response = await fetchWithTimeout(s.cloud_url + `/timesheets/${year}_${monthStartWith1}`, {});
             const dbEntry: OneMonth = await response.json();
             if (dbEntry.created !== undefined && dbEntry.change_id !== undefined)
                 return {cloud: true, month: fixMonth(dbEntry)};
@@ -115,9 +115,9 @@ export async function storeSheet(sheet: OneMonth): Promise<OneMonth> {
 
     // cloud
     const s = get(cloudSettings);
-    if (cloudUrl && s.cloud_api_key) {
+    if (s.cloud_url && s.cloud_api_key) {
         try {
-            await post(cloudUrl + `/timesheets/${sheet.year}_${sheet.month}`, "application/json", JSON.stringify(sheet));
+            await post(s.cloud_url + `/timesheets/${sheet.year}_${sheet.month}`, "application/json", JSON.stringify(sheet));
         } catch (e) {
             console.log("Failed to store sheet to cloud", sheet.year, sheet.month, e);
         }
@@ -141,7 +141,7 @@ export async function fetchICS(monthIndex: number, day: number): Promise<ICSEntr
     const s = get(cloudSettings);
     if (s.cloud_api_key) {
         try {
-            const response = await fetchWithTimeout(cloudUrl + `/fetch_ics/${monthIndex + 1}/${day}`, {timeout: 12000});
+            const response = await fetchWithTimeout(s.cloud_url + `/fetch_ics/${monthIndex + 1}/${day}`, {timeout: 12000});
             return await response.json();
         } catch (e) {
             console.log("Failed to fetch ICS", e);

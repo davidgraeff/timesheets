@@ -32,6 +32,7 @@ const persistentStore = <T>(key: string, initValue: T): Writable<T> => {
 
 
 interface CloudSettings {
+    cloud_url: string,
     cloud_api_key: string,
 }
 
@@ -61,19 +62,23 @@ export const localSettings = persistentStore<Settings>("settings", {
     last_updated: 0
 });
 
+function init_cloud_url() {
+    let cloudUrl = "";
+    if (browser) {
+        const path = window.location.pathname.replace("/settings", "").replace("/print", "") + "/api";
+        cloudUrl = document.location.protocol + "//" + window.location.hostname + ":" + window.location.port + path.replace("//", "/");
+    }
+    return cloudUrl;
+}
+
 export const cloudSettings = persistentStore<CloudSettings>("cloud_settings", {
+    cloud_url: init_cloud_url(),
     cloud_api_key: ""
 });
 
-
-let cloudUrl = "";
-if (browser) {
-    const path = window.location.pathname.replace("/settings", "").replace("/print", "") + "/api";
-    cloudUrl = document.location.protocol + "//" + window.location.hostname + ":" + window.location.port + path.replace("//", "/");
-}
-
-
 cloudSettings.subscribe(value => {
+    if (!value.cloud_url)
+        value.cloud_url = init_cloud_url();
     setAuthHeader(value.cloud_api_key);
 })
 
@@ -81,16 +86,18 @@ cloudSettings.subscribe(value => {
 async function syncSettingsToCloud(cloudSettingsChanged: (arg0: CloudSettings) => Promise<void>) {
     const local: Settings = get(localSettings);
     local.last_updated = Math.round(Date.now() / 1000);
-    await post(cloudUrl + "/settings", "application/json", JSON.stringify(local));
-    await cloudSettingsChanged(get(cloudSettings));
+    let cloud = get(cloudSettings);
+    await post(cloud.cloud_url + "/settings", "application/json", JSON.stringify(local));
+    await cloudSettingsChanged(cloud);
 }
 
 async function syncSettings(cloudSettingsChanged: (arg0: CloudSettings) => Promise<void>) {
-    const remoteSettings: Settings = await getjson(cloudUrl + "/settings");
+    let cloud = get(cloudSettings);
+    const remoteSettings: Settings = await getjson(cloud.cloud_url + "/settings");
     localSettings.set(remoteSettings);
     await cloudSettingsChanged(get(cloudSettings));
 }
 
-export {syncSettingsToCloud, syncSettings, cloudUrl};
+export {syncSettingsToCloud, syncSettings};
 
 export type {Settings, CloudSettings};

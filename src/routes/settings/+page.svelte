@@ -2,7 +2,7 @@
     import {Form, FormGroup, Input} from "sveltestrap";
     import MultiSelect from 'svelte-multiselect'
     import {onMount} from "svelte";
-    import {localSettings, cloudSettings, type CloudSettings, cloudUrl} from "../../assets/js/settings";
+    import {localSettings, cloudSettings, type CloudSettings} from "../../assets/js/settings";
     import type {Settings} from "../../assets/js/settings";
     import {getjson, setAuthHeader} from "../../assets/js/fetch";
     import {get} from "svelte/store";
@@ -16,12 +16,12 @@
 
         setAuthHeader(key);
 
-        if (!key || !cloudUrl) {
+        if (!key || !s.cloud_url) {
             newerCloudSettings = false;
             return;
         }
 
-        const remoteSettings: Settings = await getjson<Settings>(cloudUrl + "/settings").catch(() => {
+        const remoteSettings: Settings = await getjson<Settings>(s.cloud_url + "/settings").catch(() => {
             return {
                 client: "",
                 company: "",
@@ -40,6 +40,8 @@
         if (!remoteSettings.last_updated) remoteSettings.last_updated = 0;
         newerCloudSettings = remoteSettings.last_updated > local.last_updated;
         newerLocalSettings = remoteSettings.last_updated < local.last_updated;
+
+        newerCloudSettings = true;
     }
 
     function modifiedLocalSettings() {
@@ -60,7 +62,7 @@
     <div class="border p-3 mb-3">
         <h4>Cloud</h4>
         <FormGroup floating label="Cloud URL">
-            <Input placeholder="Enter a value" value={cloudUrl} disabled/>
+            <Input placeholder="Enter a value" bind:value={$cloudSettings.cloud_url} on:blur={() => cloudSettingsChanged($cloudSettings)}/>
         </FormGroup>
         <FormGroup floating label="Cloud API Key">
             <Input placeholder="Enter a value" bind:value={$cloudSettings.cloud_api_key}
