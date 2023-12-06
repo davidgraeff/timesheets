@@ -4,5 +4,7 @@ members = [
     "backend",
 ]
 
+resolver = "2"
+
 [profile.release]
 strip = true

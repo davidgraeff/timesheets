@@ -5,7 +5,7 @@ index c0c8b52..c5bc713 100644
 @@ -1,6 +1,7 @@
  {
    "name": "@popperjs/core",
-   "version": "2.11.6",
+   "version": "2.11.8",
 +  "type": "module",
    "description": "Tooltip and Popover Positioning Engine",
    "main": "dist/cjs/popper.js",

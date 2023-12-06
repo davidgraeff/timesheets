@@ -9,3 +9,12 @@ parsing Internet Calendar Scheduling (ics) Outlook URLs.
 
 The web frontend is based on Svelte and SvelteKit/Vite. The sources are written in Typescript,
 styling is applied in Scss.
+
+# Cross compile to RPI4 on Fedora and install to home assistant
+
+```
+TARGET_CC=aarch64-linux-gnu-gcc cargo build --target aarch64-unknown-linux-musl
+cp ./target/aarch64-unknown-linux-musl/debug/timesheet-backend homeassistant-package/usr/bin/timesheet-backend
+llvm-strip homeassistant-package/usr/bin/timesheet-backend
+scp -r homeassistant-package/* root@homeassistant.local:/root/addons/timesheet-web/
+```
